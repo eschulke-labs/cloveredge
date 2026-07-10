@@ -68,6 +68,7 @@ model User {
   tier               AccessTier          @default(FREE)
   issuesSent         NewsletterIssue[]
   comments           Comment[]
+  isAdmin            Boolean             @default(false) // gates /admin — minimal role model for now
 
   // Auth.js (magic-link email sign-in) — standard adapter fields/relations.
   emailVerified DateTime?
@@ -205,4 +206,37 @@ model Comment {
   rating    Int?          // 1-5, optional — supports a quick "liked it / didn't" without forcing a score
   status    CommentStatus @default(PENDING)
   createdAt DateTime      @default(now())
+}
+
+enum ModuleType {
+  HERO
+  RAIL
+  TRENDING
+}
+
+// Editorial config for a homepage section — which rail, in what order, filtered
+// to which topic. Reordered via /admin/homepage. `topicSlug` is null for
+// HERO (picks latest content overall) and TRENDING (computed from GuestSignal).
+model HomepageModule {
+  id        String     @id @default(cuid())
+  key       String     @unique
+  title     String
+  type      ModuleType @default(RAIL)
+  topicSlug String?
+  order     Int        @default(0)
+  active    Boolean    @default(true)
+}
+
+// Anonymous, cookie-keyed engagement signal — no PII, just "this browser
+// clicked into this topic N times." Used only to reorder/emphasize existing
+// homepage rails for guests, and to compute the Trending module. Never used
+// to hide content or identify a person.
+model GuestSignal {
+  id        String   @id @default(cuid())
+  guestId   String
+  topicSlug String
+  weight    Int      @default(1)
+  updatedAt DateTime @updatedAt
+
+  @@unique([guestId, topicSlug])
 }

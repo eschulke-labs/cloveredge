@@ -63,13 +63,16 @@ footnote.
   **This auto-deletes on 2026-07-11 unless claimed** — claim it at the URL
   printed during setup, or it becomes a real (not free-tier-expiring) database
   once claimed. Swap for a production instance before launch regardless.
-- Landing page ([`src/app/page.tsx`](src/app/page.tsx)) — topic list is now
-  live from the DB, with a working subscribe form; not yet the full MSN-style
-  dashboard described in Phase 2
+- **Homepage** ([`src/app/page.tsx`](src/app/page.tsx)) is the MSN-style
+  dashboard described in Phase 2: hero, Trending Now, and topic rails driven
+  by `HomepageModule`, all visible with zero login
 - `POST /api/subscribe` — creates/updates a `User` with selected `PreferenceTopic`s
 - Magic-link auth via Auth.js (`src/lib/auth.ts`), Prisma-backed sessions.
   No real email provider configured yet — magic links log to the server
   console in dev. Swap in `AUTH_RESEND_KEY` (or another provider) for Phase 5.
+- `src/proxy.ts` assigns an anonymous `cw_guest_id` cookie to every visitor
+  (Next.js renamed `middleware.ts` → `proxy.ts` in this version — verified
+  against the bundled docs, not assumed from training data)
 - Prisma client singleton at [`src/lib/prisma.ts`](src/lib/prisma.ts)
 
 ## Data model summary (current + planned additions)
@@ -84,8 +87,8 @@ footnote.
 | `NewsletterIssue` | Sent-issue snapshot | Built |
 | `Comment` | User review/comment on a casino experience, optional 1-5 rating, moderation status | Built |
 | `Account` / `Session` / `VerificationToken` | Auth.js magic-link sign-in (Prisma adapter) | Built |
-| `HomepageModule` | Configurable homepage rail (hero, category rail, widget) with ordering/curation flags | Planned — Phase 2 |
-| `GuestSignal` | Anonymous, cookie-keyed lightweight interest signal (no PII) for guest personalization | Planned — Phase 2 |
+| `HomepageModule` | Configurable homepage rail (hero, category rail, trending widget) with ordering/active flags | Built |
+| `GuestSignal` | Anonymous, cookie-keyed lightweight interest signal (no PII) for guest personalization | Built |
 | `SlotGame` | Slot title, provider, RTP, volatility, source attribution | Planned — Phase 3 |
 | `CasinoRatingCriteria` | Scored sub-categories (trust, payout speed, game variety, support) rolling up to `Casino.ratingAvg` | Planned — Phase 3 |
 | `OddsSnapshot` | Cached Polymarket market/price snapshot, polled periodically | Planned — Phase 4 |
@@ -104,28 +107,37 @@ footnote.
       end-to-end (sign-in → console-logged link → real session). Real email
       delivery still needs a provider key (Phase 5)
 
-## Phase 2 — MSN-style public homepage & guest personalization
+## Phase 2 — MSN-style public homepage & guest personalization — done
 
-The homepage must be fully useful with zero login — that's the MSN model:
+The homepage is fully useful with zero login — that's the MSN model:
 editorially curated, browsable, and lightly personalized based on behavior
-rather than an account.
+rather than an account. All items below verified end-to-end in the browser,
+not just written.
 
-- [ ] `HomepageModule` model + admin ordering UI: hero/featured carousel,
-      then category rails ("Casino News", "Bonus Offers", "Slot Ratings",
-      "Prediction Market Odds", "Land-Based Events", "Featured Creators")
-- [ ] Server-rendered hero + rails pulling from `ContentItem`, cached/ISR'd —
-      this is the page's default, logged-out state
-- [ ] Guest personalization: a `GuestSignal` cookie (anonymous ID, no PII)
-      recording which rails/topics a visitor engages with, used only to
-      **reorder/emphasize** existing rails — never to hide the base content
-- [ ] Signed-in personalization builds on top: explicit `PreferenceTopic`
-      selection (already modeled) overrides/extends the guest signal
-- [ ] "Trending now" module — simple aggregate click counts across all guest
-      sessions (anonymized), refreshed periodically, no per-user tracking needed
-- [ ] Paywall teaser UI: rails render `PAID`-tier items for everyone (title +
-      excerpt visible, per `ContentItem.excerpt`), but the full body is
-      replaced with an upgrade CTA for anonymous/free viewers — the incentive
-      to subscribe has to be visible, not hidden
+- [x] `HomepageModule` model + admin ordering UI (`/admin/homepage`, gated on
+      `User.isAdmin`): hero, Trending Now widget, and topic rails, each with
+      an editable order + active toggle, persisted via a Server Action —
+      verified: reordering "Land-Based Openings" to 0 actually changed its
+      DB row and the rendered position
+- [x] Server-rendered hero + rails pulling from `ContentItem`, this is the
+      page's default, logged-out state (`getHomepageData` in `src/lib/homepage.ts`)
+- [x] Guest personalization: an anonymous `cw_guest_id` cookie (set in
+      `src/proxy.ts`, no PII) plus `GuestSignal` rows recording which topics a
+      visitor clicks into, boosting (not hiding) matching rails — verified:
+      5 clicks on "Regulatory & Legal News" moved that rail to the top
+- [x] Signed-in personalization: explicit `PreferenceTopic` selections score
+      higher than guest clicks, so an account's stated preferences win
+- [x] Trending Now module: top 3 topics by aggregate `GuestSignal` weight
+      across all guests — verified rendering after generating signals
+- [x] Paywall teaser UI: rail/hero cards always show title + excerpt
+      (`ContentCard`, `Hero`) with a "Subscribers only" badge; the full body
+      is only gated at `/content/[slug]`, where non-entitled viewers see an
+      upgrade CTA instead of `item.body` — verified for both a `PAID` item
+      (gated) and a `FREE` item (shown in full) while signed in as a FREE user
+
+Not built in this phase (left for later, not blocking): cached/ISR'd rails
+(currently fetched fresh per request — fine at current scale, revisit if
+traffic grows), and per-content-item (vs. per-topic) guest signal granularity.
 
 ## Phase 3 — Ratings, and user reviews/comments
 
@@ -224,10 +236,10 @@ with a `PENDING`/`APPROVED`/`REJECTED` moderation status.
 
 ## Immediate next steps
 
-1. **Claim the dev database** (see Current state above) before it expires
-2. Phase 2: replace the placeholder landing page with the `HomepageModule`-driven
-   hero + rails layout — this is the highest-leverage next step since it's the
-   first thing every visitor sees
-3. Prototype the Polymarket Gamma API call (unauthenticated, low risk) to
+1. Phase 3: casino/slot ratings + the paid-tier comment/review submission UI
+   (schema and access-tier rules already decided, just needs building)
+2. Prototype the Polymarket Gamma API call (unauthenticated, low risk) to
    confirm what market categories are actually worth showing before building
-   the full odds widget
+   the full odds widget (Phase 4)
+3. Revisit caching (ISR or a shorter-lived cache layer) on the homepage rails
+   once there's enough content volume for the per-request DB fetch to matter

@@ -1,30 +1,64 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { getHomepageData } from "@/lib/homepage";
 import { SubscribeForm } from "@/components/SubscribeForm";
+import { Hero } from "@/components/Hero";
+import { TrendingWidget } from "@/components/TrendingWidget";
+import { Rail } from "@/components/Rail";
 
 export default async function Home() {
-  const topics = await prisma.preferenceTopic.findMany({
-    where: { kind: "TOPIC" },
-    orderBy: { label: "asc" },
-    select: { slug: true, label: true },
-  });
+  const [{ hero, trending, rails, viewerTier }, session, topics] = await Promise.all([
+    getHomepageData(),
+    auth(),
+    prisma.preferenceTopic.findMany({
+      where: { kind: "TOPIC" },
+      orderBy: { label: "asc" },
+      select: { slug: true, label: true },
+    }),
+  ]);
 
   return (
     <main className="flex-1">
-      <section className="mx-auto max-w-3xl px-6 py-20 text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-          CasinoWatch
-        </h1>
-        <p className="mt-4 text-lg text-gray-600 dark:text-gray-400">
-          One newsletter, tuned to what you actually want to know about
-          online and land-based casinos — news, bonuses, reviews, and
-          regulatory updates, delivered on your schedule.
-        </p>
-      </section>
+      <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
+        <span className="text-lg font-bold tracking-tight">CasinoWatch</span>
+        {session?.user ? (
+          <div className="flex items-center gap-3 text-sm">
+            {session.user.isAdmin && (
+              <Link href="/admin/homepage" className="hover:underline">
+                Admin
+              </Link>
+            )}
+            <span className="text-gray-500">{session.user.email}</span>
+          </div>
+        ) : (
+          <Link
+            href="/api/auth/signin"
+            className="rounded-md border border-gray-300 px-4 py-1.5 text-sm font-medium dark:border-gray-700"
+          >
+            Sign in
+          </Link>
+        )}
+      </header>
 
-      <section className="mx-auto max-w-3xl px-6 pb-16">
+      <div className="mx-auto max-w-5xl px-6 pb-8">
+        {hero && <Hero item={hero} viewerTier={viewerTier} />}
+      </div>
+
+      <div className="mx-auto max-w-5xl space-y-10 px-6 pb-16">
+        <TrendingWidget trending={trending} />
+        {rails.map((rail) => (
+          <Rail key={rail.key} rail={rail} viewerTier={viewerTier} />
+        ))}
+      </div>
+
+      <section className="mx-auto max-w-3xl border-t border-gray-200 px-6 py-16 dark:border-gray-800">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Choose what you get
+          Get the newsletter
         </h2>
+        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+          Choose what you get, delivered on your schedule.
+        </p>
         <SubscribeForm topics={topics} />
       </section>
 

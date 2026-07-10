@@ -20,6 +20,14 @@ const config = {
   adapter: PrismaAdapter(prisma),
   providers: [emailProvider],
   session: { strategy: "database" },
+  callbacks: {
+    session({ session, user }) {
+      session.user.id = user.id;
+      session.user.tier = (user as unknown as { tier: "FREE" | "PAID" }).tier;
+      session.user.isAdmin = (user as unknown as { isAdmin: boolean }).isAdmin;
+      return session;
+    },
+  },
 } satisfies NextAuthConfig;
 
 export const { handlers, auth, signIn, signOut } = NextAuth(config);
