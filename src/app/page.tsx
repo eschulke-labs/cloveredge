@@ -1,13 +1,13 @@
-const TOPICS = [
-  { slug: "online-casino-news", label: "Online Casino News" },
-  { slug: "land-based-openings", label: "Land-Based Openings & Events" },
-  { slug: "bonus-offers", label: "Bonus & Promo Offers" },
-  { slug: "sports-betting", label: "Sports Betting" },
-  { slug: "regulatory-news", label: "Regulatory & Legal News" },
-  { slug: "responsible-gambling", label: "Responsible Gambling Resources" },
-];
+import { prisma } from "@/lib/prisma";
+import { SubscribeForm } from "@/components/SubscribeForm";
 
-export default function Home() {
+export default async function Home() {
+  const topics = await prisma.preferenceTopic.findMany({
+    where: { kind: "TOPIC" },
+    orderBy: { label: "asc" },
+    select: { slug: true, label: true },
+  });
+
   return (
     <main className="flex-1">
       <section className="mx-auto max-w-3xl px-6 py-20 text-center">
@@ -25,31 +25,7 @@ export default function Home() {
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
           Choose what you get
         </h2>
-        <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {TOPICS.map((topic) => (
-            <li
-              key={topic.slug}
-              className="rounded-lg border border-gray-200 px-4 py-3 text-sm dark:border-gray-800"
-            >
-              {topic.label}
-            </li>
-          ))}
-        </ul>
-
-        <form className="mt-8 flex flex-col gap-3 sm:flex-row">
-          <input
-            type="email"
-            required
-            placeholder="you@example.com"
-            className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm dark:border-gray-700 dark:bg-transparent"
-          />
-          <button
-            type="submit"
-            className="rounded-md bg-black px-5 py-2 text-sm font-medium text-white dark:bg-white dark:text-black"
-          >
-            Get started
-          </button>
-        </form>
+        <SubscribeForm topics={topics} />
       </section>
 
       <footer className="mx-auto max-w-3xl px-6 pb-12 text-xs text-gray-500">

@@ -50,14 +50,23 @@ promotional or affiliate content goes live — it's out of scope for this
 document to resolve, but it should gate Phase 5 (Monetization), not just be a
 footnote.
 
-## Current state (scaffolded)
+## Current state
 
 - Next.js 15 (App Router, TypeScript, Tailwind, ESLint)
-- Prisma 7 ORM, schema at [`prisma/schema.prisma`](prisma/schema.prisma)
-- Minimal landing page ([`src/app/page.tsx`](src/app/page.tsx)) — topic list +
-  email capture, not yet the full MSN-style dashboard described below
+- Prisma 7 ORM, schema at [`prisma/schema.prisma`](prisma/schema.prisma), migrated
+  and seeded against a live Postgres database
+- **Database**: a free Prisma Postgres dev instance (created via `create-db`).
+  **This auto-deletes on 2026-07-11 unless claimed** — claim it at the URL
+  printed during setup, or it becomes a real (not free-tier-expiring) database
+  once claimed. Swap for a production instance before launch regardless.
+- Landing page ([`src/app/page.tsx`](src/app/page.tsx)) — topic list is now
+  live from the DB, with a working subscribe form; not yet the full MSN-style
+  dashboard described in Phase 2
+- `POST /api/subscribe` — creates/updates a `User` with selected `PreferenceTopic`s
+- Magic-link auth via Auth.js (`src/lib/auth.ts`), Prisma-backed sessions.
+  No real email provider configured yet — magic links log to the server
+  console in dev. Swap in `AUTH_RESEND_KEY` (or another provider) for Phase 5.
 - Prisma client singleton at [`src/lib/prisma.ts`](src/lib/prisma.ts)
-- No database provisioned yet
 
 ## Data model summary (current + planned additions)
 
@@ -69,6 +78,8 @@ footnote.
 | `Bonus` | Promo offers tied to a casino | Built |
 | `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID) | Built |
 | `NewsletterIssue` | Sent-issue snapshot | Built |
+| `Comment` | User review/comment on a casino experience, optional 1-5 rating, moderation status | Built |
+| `Account` / `Session` / `VerificationToken` | Auth.js magic-link sign-in (Prisma adapter) | Built |
 | `HomepageModule` | Configurable homepage rail (hero, category rail, widget) with ordering/curation flags | Planned — Phase 2 |
 | `GuestSignal` | Anonymous, cookie-keyed lightweight interest signal (no PII) for guest personalization | Planned — Phase 2 |
 | `SlotGame` | Slot title, provider, RTP, volatility, source attribution | Planned — Phase 3 |
@@ -77,13 +88,17 @@ footnote.
 | `VideoEmbed` | YouTube video reference + channel metadata, tied to `ContentItem` or standalone | Planned — Phase 4 |
 | `CreatorProfile` | Content creator/channel submission for promotion (status: pending/approved, featured flag) | Planned — Phase 4 |
 
-## Phase 1 — Foundation (local dev loop)
+## Phase 1 — Foundation (local dev loop) — done
 
-- [ ] Provision Postgres (local Docker, or Neon/Supabase/Prisma Postgres free tier)
-- [ ] `npx prisma migrate dev` for the initial schema
-- [ ] Seed script with sample topics, casinos, and content
-- [ ] `POST /api/subscribe` route wiring the landing page form to `User` + `PreferenceTopic`
-- [ ] Basic auth — magic-link email fits a newsletter product well (no password)
+- [x] Provision Postgres — Prisma Postgres free dev instance (**claim it**, see above)
+- [x] `npx prisma migrate dev` for the initial schema (+ auth models)
+- [x] Seed script with sample topics, a casino, a bonus, and content items
+      (`npm run db:seed`), including one `PAID`-tier item to exercise the paywall
+- [x] `POST /api/subscribe` route wiring the landing page form to `User` + `PreferenceTopic`
+      — verified end-to-end (form submit → row in Postgres)
+- [x] Basic auth — Auth.js magic-link email, Prisma-backed sessions, verified
+      end-to-end (sign-in → console-logged link → real session). Real email
+      delivery still needs a provider key (Phase 5)
 
 ## Phase 2 — MSN-style public homepage & guest personalization
 
@@ -108,7 +123,7 @@ rather than an account.
       replaced with an upgrade CTA for anonymous/free viewers — the incentive
       to subscribe has to be visible, not hidden
 
-## Phase 3 — Ratings: slots & casinos
+## Phase 3 — Ratings, and user reviews/comments
 
 - [ ] `SlotGame` model + integration with a slot data API (slot.report or
       similar) for RTP/volatility/provider — clearly attributed, refreshed on
@@ -119,6 +134,27 @@ rather than an account.
 - [ ] Land-based casino profiles seeded from Google Places API (address,
       hours, public rating) + editorial notes layered on top
 - [ ] Ratings surfaced as their own homepage rail and on casino detail pages
+
+### User reviews/comments (schema already built)
+
+Signed-in users can leave a comment + optional 1-5 rating on a casino —
+their own experience, what they liked or didn't. `Comment` model already
+exists (`prisma/schema.prisma`), tied to `User` and an optional `Casino`,
+with a `PENDING`/`APPROVED`/`REJECTED` moderation status.
+
+- **Assumption to confirm**: any signed-in user can comment (FREE or PAID
+  tier) — comments aren't gated behind payment, since paying to unlock the
+  ability to leave feedback would be an unusual paywall design. Flag if that's
+  wrong.
+- [ ] Comment submission UI on casino detail pages (requires sign-in — reuses
+      Phase 1 auth)
+- [ ] Moderation queue in admin (approve/reject before a comment goes public)
+      — necessary for a regulated-adjacent content site to avoid spam/abuse
+- [ ] Display approved comments on casino profile pages; roll up an average
+      user rating alongside (not blended with) the editorial `ratingAvg` —
+      keep "what our editors think" and "what users say" visibly separate
+- [ ] When `SlotGame` lands, add a nullable `slotGameId` to `Comment` the same
+      way `casinoId` works now, so users can review specific games too
 
 ## Phase 4 — Odds, video, and creator promotion
 
@@ -180,10 +216,12 @@ rather than an account.
 
 ## Immediate next steps
 
-1. Phase 1: provision a database, run the first migration, seed sample content
+1. **Claim the dev database** (see Current state above) before it expires
 2. Phase 2: replace the placeholder landing page with the `HomepageModule`-driven
    hero + rails layout — this is the highest-leverage next step since it's the
    first thing every visitor sees
 3. Prototype the Polymarket Gamma API call (unauthenticated, low risk) to
    confirm what market categories are actually worth showing before building
    the full odds widget
+4. Confirm the comments-tier assumption above (Phase 3) before building the
+   submission UI

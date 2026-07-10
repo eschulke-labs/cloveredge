@@ -67,6 +67,48 @@ model User {
   subscriptionStatus SubscriptionStatus  @default(ACTIVE)
   tier               AccessTier          @default(FREE)
   issuesSent         NewsletterIssue[]
+  comments           Comment[]
+
+  // Auth.js (magic-link email sign-in) — standard adapter fields/relations.
+  emailVerified DateTime?
+  accounts      Account[]
+  sessions      Session[]
+}
+
+// --- Auth.js Prisma adapter models (magic-link email auth) ---
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@unique([identifier, token])
 }
 
 // A topic/category a user can opt into, e.g. "Online Slots", "Land-Based Openings",
@@ -97,6 +139,7 @@ model Casino {
   ratingAvg   Float?
   content     ContentItem[]
   bonuses     Bonus[]
+  comments    Comment[]
 }
 
 model Bonus {
@@ -139,4 +182,27 @@ model NewsletterIssue {
   sentAt     DateTime?
   contentIds String[]  // ContentItem ids included in this issue
   createdAt  DateTime  @default(now())
+}
+
+enum CommentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// User reviews/comments on a casino experience — "liked or didn't like this
+// casino" plus free-text. `casinoId` is nullable to also allow general
+// experience feedback not tied to a specific casino. When SlotGame lands
+// (Phase 3), add a nullable slotGameId here the same way rather than a
+// separate table — same shape, same moderation flow.
+model Comment {
+  id        String        @id @default(cuid())
+  author    User          @relation(fields: [authorId], references: [id])
+  authorId  String
+  casino    Casino?       @relation(fields: [casinoId], references: [id])
+  casinoId  String?
+  body      String
+  rating    Int?          // 1-5, optional — supports a quick "liked it / didn't" without forcing a score
+  status    CommentStatus @default(PENDING)
+  createdAt DateTime      @default(now())
 }
