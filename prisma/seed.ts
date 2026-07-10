@@ -11,6 +11,8 @@ const TOPICS = [
   { slug: "sports-betting", label: "Sports Betting" },
   { slug: "regulatory-news", label: "Regulatory & Legal News" },
   { slug: "responsible-gambling", label: "Responsible Gambling Resources" },
+  { slug: "prediction-markets", label: "Prediction Markets" },
+  { slug: "game-videos", label: "Game & Casino Videos" },
 ];
 
 async function main() {
@@ -129,6 +131,24 @@ async function main() {
       tier: "FREE" as const,
       topics: ["sports-betting"],
     },
+    {
+      slug: "prediction-market-odds-next-state-to-legalize",
+      title: "Prediction Markets: Odds on the Next State to Legalize Online Casino Play",
+      excerpt: "What Polymarket-style prediction markets currently imply about upcoming legalization votes.",
+      body: "Placeholder for live prediction-market data (Phase 4 will pull this from the Polymarket Gamma API and cache it as OddsSnapshot rows). Implied probabilities shown here are not betting odds.",
+      contentType: "ODDS_UPDATE" as const,
+      tier: "FREE" as const,
+      topics: ["prediction-markets"],
+    },
+    {
+      slug: "watch-top-slot-bonus-rounds-this-week",
+      title: "Watch: Top Slot Bonus Rounds This Week",
+      excerpt: "Video roundup of the biggest bonus-round wins streamers hit this week.",
+      body: "Placeholder for embedded video content (Phase 4 will pull this from the YouTube Data API and store it as VideoEmbed rows, including creator-submitted channels).",
+      contentType: "NEWS" as const,
+      tier: "FREE" as const,
+      topics: ["game-videos"],
+    },
   ];
 
   for (const item of contentItems) {
@@ -154,6 +174,8 @@ async function main() {
     { key: "rail:sports-betting", title: "Sports Betting", type: "RAIL" as const, topicSlug: "sports-betting", order: 5 },
     { key: "rail:regulatory-news", title: "Regulatory & Legal News", type: "RAIL" as const, topicSlug: "regulatory-news", order: 6 },
     { key: "rail:responsible-gambling", title: "Responsible Gambling Resources", type: "RAIL" as const, topicSlug: "responsible-gambling", order: 7 },
+    { key: "rail:prediction-markets", title: "Prediction Markets", type: "RAIL" as const, topicSlug: "prediction-markets", order: 8 },
+    { key: "rail:game-videos", title: "Game & Casino Videos", type: "RAIL" as const, topicSlug: "game-videos", order: 9 },
   ];
 
   for (const mod of homepageModules) {

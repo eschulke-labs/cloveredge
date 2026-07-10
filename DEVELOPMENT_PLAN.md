@@ -178,13 +178,21 @@ with a `PENDING`/`APPROVED`/`REJECTED` moderation status.
 
 ## Phase 4 — Odds, video, and creator promotion
 
+**"Prediction Markets" and "Game & Casino Videos" already exist as selectable
+preference topics and homepage rails** (subscribe form + `/`), each seeded
+with one placeholder `ContentItem` so the rail isn't empty. What's still
+missing is the actual automated sourcing — right now those two rails only
+show hand-written placeholder items, not live Polymarket/YouTube data.
+
 - [ ] Polymarket integration: scheduled job polling Gamma API for relevant
       markets (sports, gambling-industry, or general interest — TBD which
-      categories fit the audience), stored as `OddsSnapshot`, rendered as a
-      homepage widget with an "implied probability, not a bet" disclaimer
+      categories fit the audience), stored as `OddsSnapshot`, rendered in the
+      existing "Prediction Markets" rail (replacing the placeholder item)
+      with an "implied probability, not a bet" disclaimer
 - [ ] `VideoEmbed` model + YouTube integration: curate channel/video IDs
       (via editorial pick or creator submission below), refresh via cheap
-      `videos.list` calls, embed in a "Watch" rail
+      `videos.list` calls, embed in the existing "Game & Casino Videos" rail
+      (replacing the placeholder item)
 - [ ] Creator promotion program:
   - [ ] Public "submit your channel" form → `CreatorProfile` (pending status)
   - [ ] Admin approval workflow
