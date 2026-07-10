@@ -56,13 +56,25 @@ footnote.
 
 ## Current state
 
+- **Live at [casinowatch.vercel.app](https://casinowatch.vercel.app)** —
+  deployed via Vercel CLI (project `eschulke-labs/casinowatch`), manual
+  deploys only (GitHub auto-deploy-on-push isn't connected — Vercel's GitHub
+  App wasn't authorized for this account; `vercel deploy --prod` from the
+  repo root redeploys after any change)
 - Next.js 15 (App Router, TypeScript, Tailwind, ESLint)
 - Prisma 7 ORM, schema at [`prisma/schema.prisma`](prisma/schema.prisma), migrated
   and seeded against a live Postgres database
-- **Database**: a free Prisma Postgres dev instance (created via `create-db`).
-  **This auto-deletes on 2026-07-11 unless claimed** — claim it at the URL
-  printed during setup, or it becomes a real (not free-tier-expiring) database
-  once claimed. Swap for a production instance before launch regardless.
+- **Database**: a free Prisma Postgres dev instance (claimed, no longer
+  expiring). **Production and local dev currently share this same database**
+  — anything typed into the live site (subscribes, guest clicks) shows up
+  locally too, and vice versa. Fine for a demo/share link; split into
+  separate dev/prod databases before any real public launch.
+- **Magic-link sign-in doesn't work for visitors on the live site yet** —
+  no email provider is configured (Phase 5), so the login link only ever
+  logs to the server console, which visitors can't see. Browsing, rails,
+  personalization, and the paywall teaser all work for anonymous visitors;
+  actually signing in only works for whoever has server log access
+  (`vercel logs`) right now.
 - **Homepage** ([`src/app/page.tsx`](src/app/page.tsx)) is the MSN-style
   dashboard described in Phase 2: hero, Trending Now, and topic rails driven
   by `HomepageModule`, all visible with zero login
