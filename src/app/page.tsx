@@ -61,13 +61,27 @@ export default async function Home() {
       </div>
 
       <section className="mx-auto max-w-3xl border-t border-gray-200 px-6 py-16 dark:border-gray-800">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          Get the newsletter
-        </h2>
-        <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-          Choose what you get, delivered on your schedule.
-        </p>
-        <SubscribeForm topics={topics} />
+        <details className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between">
+            <span>
+              <span className="text-sm font-semibold uppercase tracking-wide text-gray-500">
+                Get the newsletter
+              </span>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Choose what you get, delivered on your schedule.
+              </p>
+            </span>
+            <span
+              aria-hidden
+              className="ml-4 shrink-0 text-gray-400 transition-transform group-open:rotate-180"
+            >
+              ▾
+            </span>
+          </summary>
+          <div className="mt-4">
+            <SubscribeForm topics={topics} />
+          </div>
+        </details>
       </section>
 
       <footer className="mx-auto max-w-3xl px-6 pb-12 text-xs text-gray-500">
