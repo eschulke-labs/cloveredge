@@ -8,14 +8,28 @@ layered on top for both anonymous visitors and signed-in users.
 
 Repo: [eschulke-labs/casinowatch](https://github.com/eschulke-labs/casinowatch) (private)
 
+## Monetization: subscription paywall (decided)
+
+Three access tiers:
+
+1. **Anonymous** — no account. Sees the public MSN-style homepage/rails (Phase 2).
+2. **Free account** — signed up, gets newsletter delivery + basic preferences.
+3. **Paid subscriber** — everything free gets, plus `AccessTier.PAID`-gated content.
+
+`User.tier` and `ContentItem.tier` (`AccessTier`: `FREE` | `PAID`) are already in
+the schema. What's actually gated (deeper real-time data vs. exclusive editorial
+vs. both) is a content/product decision made per-item at publish time, not a
+schema one — deliberately generic so it doesn't need a migration later. Billing
+integration (Stripe, entitlement enforcement) is Phase 7.
+
 ## Open decisions (currently deferred by design)
 
-- **Monetization** — affiliate links, subscriptions, or none. The data model
-  supports affiliate tracking or paid tiers being bolted on later.
 - **Content sourcing** — manual CMS entry vs. automated feeds, both supported
   from day one via `ContentItem.source` (`MANUAL` | `FEED`).
+- **Affiliate links** — separate from the subscription paywall above; still
+  undecided whether to add affiliate tracking on top. See Phase 7.
 
-Revisit both once there's enough real content/usage to know what's worth building.
+Revisit once there's enough real content/usage to know what's worth building.
 
 ## Resources & external data sources (researched)
 
@@ -49,11 +63,11 @@ footnote.
 
 | Model | Purpose | Status |
 |---|---|---|
-| `User` | Account, jurisdiction, digest frequency, age-verification | Built |
+| `User` | Account, jurisdiction, digest frequency, age-verification, `tier` (FREE/PAID) | Built |
 | `PreferenceTopic` | Opt-in unit — topic, region, or casino type | Built |
 | `Casino` | Online/land-based/hybrid entity | Built — needs rating breakdown fields (Phase 3) |
 | `Bonus` | Promo offers tied to a casino | Built |
-| `ContentItem` | Editorial content, source-tagged | Built |
+| `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID) | Built |
 | `NewsletterIssue` | Sent-issue snapshot | Built |
 | `HomepageModule` | Configurable homepage rail (hero, category rail, widget) with ordering/curation flags | Planned — Phase 2 |
 | `GuestSignal` | Anonymous, cookie-keyed lightweight interest signal (no PII) for guest personalization | Planned — Phase 2 |
@@ -89,6 +103,10 @@ rather than an account.
       selection (already modeled) overrides/extends the guest signal
 - [ ] "Trending now" module — simple aggregate click counts across all guest
       sessions (anonymized), refreshed periodically, no per-user tracking needed
+- [ ] Paywall teaser UI: rails render `PAID`-tier items for everyone (title +
+      excerpt visible, per `ContentItem.excerpt`), but the full body is
+      replaced with an upgrade CTA for anonymous/free viewers — the incentive
+      to subscribe has to be visible, not hidden
 
 ## Phase 3 — Ratings: slots & casinos
 
@@ -134,13 +152,20 @@ rather than an account.
       additional automated feeds (press releases, regulatory bulletins)
 - [ ] De-duplication / editorial review queue before `FEED` content publishes
 
-## Phase 7 — Monetization (gated on legal review)
+## Phase 7 — Subscription billing (gated on legal review)
 
-- Affiliate path: tracked outbound links, disclosure banners, per-partner
-  reporting on `Bonus`/`Casino`
-- Subscription path: Stripe, tier gating on content/topics
-- **Do not build either without confirming gambling-advertising compliance
-  requirements for the target jurisdictions first** — see compliance flag above
+- [ ] Stripe integration: checkout, customer portal, webhook handling
+      (subscription created/renewed/canceled → update `User.tier`)
+- [ ] Server-side entitlement enforcement: any route/query serving
+      `ContentItem` where `tier = PAID` must check the requesting user's
+      `tier`, not just hide it client-side
+- [ ] Pricing/plan decision (single tier vs. multiple paid tiers) — not yet made
+- [ ] Optional, separate from the paywall: affiliate links (tracked outbound
+      links, disclosure banners, per-partner reporting on `Bonus`/`Casino`) —
+      still undecided whether to pursue this at all
+- **Do not enable billing or affiliate links without confirming
+  gambling-advertising compliance requirements for the target jurisdictions
+  first** — see compliance flag above
 
 ## Non-functional considerations throughout
 

@@ -1,8 +1,9 @@
 // CasinoWatch data model
-// Design goal: content sourcing (manual CMS vs automated feeds) and monetization
-// (affiliate vs subscription vs none) are both left open — see DEVELOPMENT_PLAN.md.
-// The schema stays source-agnostic and tier-agnostic so either can be added later
-// without a migration that breaks existing data.
+// Design goal: content sourcing (manual CMS vs automated feeds) is left open —
+// see DEVELOPMENT_PLAN.md. Monetization is a subscription paywall: three access
+// tiers (anonymous visitor, free account, paid). Anonymous has no User record;
+// FREE vs PAID is AccessTier below. Gating is a generic per-ContentItem flag —
+// which content is actually premium is a product decision, not a schema one.
 
 generator client {
   provider = "prisma-client"
@@ -45,6 +46,15 @@ enum SubscriptionStatus {
   UNSUBSCRIBED
 }
 
+// Content access tier — separate from SubscriptionStatus, which tracks
+// newsletter delivery state, not payment. Billing fields (Stripe customer/
+// subscription IDs, renewal date) get added in Phase 7 once payments are
+// actually wired up — no point modeling them before there's a processor.
+enum AccessTier {
+  FREE
+  PAID
+}
+
 model User {
   id                 String              @id @default(cuid())
   email              String              @unique
@@ -55,6 +65,7 @@ model User {
   preferences        PreferenceTopic[]   @relation("UserPreferences")
   digestFrequency    DigestFrequency     @default(WEEKLY)
   subscriptionStatus SubscriptionStatus  @default(ACTIVE)
+  tier               AccessTier          @default(FREE)
   issuesSent         NewsletterIssue[]
 }
 
@@ -109,6 +120,7 @@ model ContentItem {
   contentType ContentType
   source      ContentSource @default(MANUAL)
   sourceUrl   String?       // set when source = FEED
+  tier        AccessTier    @default(FREE) // FREE visible to everyone incl. guests; PAID requires an active subscriber
   casino      Casino?       @relation(fields: [casinoId], references: [id])
   casinoId    String?
   topics      PreferenceTopic[] @relation("ContentTopics")
