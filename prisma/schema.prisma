@@ -1,0 +1,130 @@
+// CasinoWatch data model
+// Design goal: content sourcing (manual CMS vs automated feeds) and monetization
+// (affiliate vs subscription vs none) are both left open — see DEVELOPMENT_PLAN.md.
+// The schema stays source-agnostic and tier-agnostic so either can be added later
+// without a migration that breaks existing data.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ContentType {
+  NEWS
+  BONUS_PROMO
+  CASINO_REVIEW
+  ODDS_UPDATE
+  REGULATORY
+  RESPONSIBLE_GAMBLING
+}
+
+enum ContentSource {
+  MANUAL
+  FEED
+}
+
+enum CasinoType {
+  ONLINE
+  LAND_BASED
+  HYBRID
+}
+
+enum DigestFrequency {
+  DAILY
+  WEEKLY
+  INSTANT
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAUSED
+  UNSUBSCRIBED
+}
+
+model User {
+  id                 String              @id @default(cuid())
+  email              String              @unique
+  name               String?
+  createdAt          DateTime            @default(now())
+  ageVerifiedAt      DateTime?           // 18+/21+ gate, jurisdiction-dependent
+  jurisdiction       String?             // ISO country/state code, drives compliance + relevant content
+  preferences        PreferenceTopic[]   @relation("UserPreferences")
+  digestFrequency    DigestFrequency     @default(WEEKLY)
+  subscriptionStatus SubscriptionStatus  @default(ACTIVE)
+  issuesSent         NewsletterIssue[]
+}
+
+// A topic/category a user can opt into, e.g. "Online Slots", "Land-Based Openings",
+// "Bonus Offers", "Sports Betting", "Regulatory News", "Responsible Gambling".
+// Also doubles as a region/jurisdiction tag when `kind = REGION`.
+model PreferenceTopic {
+  id        String        @id @default(cuid())
+  slug      String        @unique
+  label     String
+  kind      TopicKind     @default(TOPIC)
+  users     User[]        @relation("UserPreferences")
+  content   ContentItem[] @relation("ContentTopics")
+}
+
+enum TopicKind {
+  TOPIC
+  REGION
+  CASINO_TYPE
+}
+
+model Casino {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  type        CasinoType
+  jurisdiction String?
+  website     String?
+  ratingAvg   Float?
+  content     ContentItem[]
+  bonuses     Bonus[]
+}
+
+model Bonus {
+  id        String    @id @default(cuid())
+  casino    Casino    @relation(fields: [casinoId], references: [id])
+  casinoId  String
+  title     String
+  terms     String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// Single table for all editorial content regardless of where it came from
+// (manual CMS entry today, automated feed ingestion later).
+model ContentItem {
+  id          String        @id @default(cuid())
+  title       String
+  slug        String        @unique
+  excerpt     String?
+  body        String
+  contentType ContentType
+  source      ContentSource @default(MANUAL)
+  sourceUrl   String?       // set when source = FEED
+  casino      Casino?       @relation(fields: [casinoId], references: [id])
+  casinoId    String?
+  topics      PreferenceTopic[] @relation("ContentTopics")
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+// Snapshot of a sent (or previewed) newsletter issue, for history/debugging
+// and eventually open/click analytics.
+model NewsletterIssue {
+  id         String    @id @default(cuid())
+  user       User      @relation(fields: [userId], references: [id])
+  userId     String
+  subject    String
+  sentAt     DateTime?
+  contentIds String[]  // ContentItem ids included in this issue
+  createdAt  DateTime  @default(now())
+}
