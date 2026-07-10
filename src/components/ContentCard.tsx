@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { getTopicStyle } from "@/lib/topicStyle";
 
 type Props = {
   slug: string;
@@ -12,6 +13,8 @@ type Props = {
 };
 
 export function ContentCard({ slug, title, excerpt, tier, isEntitled, topicSlug }: Props) {
+  const style = topicSlug ? getTopicStyle(topicSlug) : null;
+
   function trackClick() {
     if (!topicSlug) return;
     fetch("/api/signal", {
@@ -26,7 +29,7 @@ export function ContentCard({ slug, title, excerpt, tier, isEntitled, topicSlug 
     <Link
       href={`/content/${slug}`}
       onClick={trackClick}
-      className="block rounded-lg border border-gray-200 p-4 text-sm hover:border-gray-400 dark:border-gray-800 dark:hover:border-gray-600"
+      className={`block rounded-lg border border-t-4 border-gray-200 bg-white p-4 text-sm shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-gray-800 dark:bg-gray-900/40 ${style?.border ?? "border-t-gray-400 dark:border-t-gray-600"}`}
     >
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-medium">{title}</h3>

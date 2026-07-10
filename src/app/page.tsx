@@ -21,7 +21,15 @@ export default async function Home() {
   return (
     <main className="flex-1">
       <header className="mx-auto flex max-w-5xl items-center justify-between px-6 py-6">
-        <span className="text-lg font-bold tracking-tight">CasinoWatch</span>
+        <span className="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <span
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-fuchsia-600 text-base shadow-sm"
+            aria-hidden
+          >
+            🎲
+          </span>
+          CasinoWatch
+        </span>
         {session?.user ? (
           <div className="flex items-center gap-3 text-sm">
             {session.user.isAdmin && (
