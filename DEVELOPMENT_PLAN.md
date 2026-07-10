@@ -22,6 +22,10 @@ vs. both) is a content/product decision made per-item at publish time, not a
 schema one — deliberately generic so it doesn't need a migration later. Billing
 integration (Stripe, entitlement enforcement) is Phase 7.
 
+**Confirmed PAID-tier perk**: the ability to post comments/reviews (see
+Phase 3) is gated to paid subscribers, not just any signed-in free account —
+this is a deliberate incentive to upgrade, not merely content gating.
+
 ## Open decisions (currently deferred by design)
 
 - **Content sourcing** — manual CMS entry vs. automated feeds, both supported
@@ -135,26 +139,30 @@ rather than an account.
       hours, public rating) + editorial notes layered on top
 - [ ] Ratings surfaced as their own homepage rail and on casino detail pages
 
-### User reviews/comments (schema already built)
+### User reviews/comments — PAID-tier feature (schema already built)
 
-Signed-in users can leave a comment + optional 1-5 rating on a casino —
+Paid subscribers can leave a comment + optional 1-5 rating on a casino —
 their own experience, what they liked or didn't. `Comment` model already
 exists (`prisma/schema.prisma`), tied to `User` and an optional `Casino`,
 with a `PENDING`/`APPROVED`/`REJECTED` moderation status.
 
-- **Assumption to confirm**: any signed-in user can comment (FREE or PAID
-  tier) — comments aren't gated behind payment, since paying to unlock the
-  ability to leave feedback would be an unusual paywall design. Flag if that's
-  wrong.
-- [ ] Comment submission UI on casino detail pages (requires sign-in — reuses
-      Phase 1 auth)
+- **Decided**: commenting requires `User.tier == PAID`. Free accounts and
+  anonymous visitors can read approved comments but not post them — this is
+  a deliberate subscribe incentive, not just a spam-prevention measure.
+- [ ] Comment submission UI on casino detail pages, visible only to signed-in
+      `PAID` users; signed-in `FREE` users see an upgrade prompt instead of
+      the form (same pattern as the Phase 2 paywall teaser)
+- [ ] Server-side enforcement: the comment-creation route must check
+      `session.user.tier === "PAID"` itself, not just hide the UI — same
+      principle as the Phase 7 entitlement-enforcement note
 - [ ] Moderation queue in admin (approve/reject before a comment goes public)
       — necessary for a regulated-adjacent content site to avoid spam/abuse
-- [ ] Display approved comments on casino profile pages; roll up an average
-      user rating alongside (not blended with) the editorial `ratingAvg` —
-      keep "what our editors think" and "what users say" visibly separate
+- [ ] Display approved comments on casino profile pages (visible to everyone,
+      posting still PAID-only); roll up an average user rating alongside
+      (not blended with) the editorial `ratingAvg` — keep "what our editors
+      think" and "what users say" visibly separate
 - [ ] When `SlotGame` lands, add a nullable `slotGameId` to `Comment` the same
-      way `casinoId` works now, so users can review specific games too
+      way `casinoId` works now, so paid users can review specific games too
 
 ## Phase 4 — Odds, video, and creator promotion
 
@@ -223,5 +231,3 @@ with a `PENDING`/`APPROVED`/`REJECTED` moderation status.
 3. Prototype the Polymarket Gamma API call (unauthenticated, low risk) to
    confirm what market categories are actually worth showing before building
    the full odds widget
-4. Confirm the comments-tier assumption above (Phase 3) before building the
-   submission UI
