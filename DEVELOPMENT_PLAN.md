@@ -147,19 +147,26 @@ footnote.
   — anything typed into the live site (subscribes, guest clicks) shows up
   locally too, and vice versa. Fine for a demo/share link; split into
   separate dev/prod databases before any real public launch.
-- **Magic-link sign-in doesn't work for visitors on the live site yet** —
-  no email provider is configured (Phase 5), so the login link only ever
-  logs to the server console, which visitors can't see. Browsing, rails,
-  personalization, and the paywall teaser all work for anonymous visitors;
-  actually signing in only works for whoever has server log access
-  (`vercel logs`) right now.
+- **Real magic-link email delivery is live** via Resend (pulled forward
+  from Phase 5 — just the "send an email" piece, not the full digest
+  system). `AUTH_RESEND_KEY` + `EMAIL_FROM` set both locally and on Vercel
+  production. Sender is Resend's sandbox address (`onboarding@resend.dev`),
+  which **only delivers to the email the Resend account itself was created
+  with** — fine for the current admin accounts, but won't reach arbitrary
+  visitors; verifying a real domain is needed before this works for anyone
+  who signs up. Verified locally: sign-in flow reaches Auth.js's
+  `/api/auth/verify-request` success page with no errors and no
+  console-log fallback firing, confirming the real Resend path ran.
+- **Two admin accounts** (`User.isAdmin = true`, seeded in `prisma/seed.ts`):
+  `admin@casinowatch.local` (demo/test account) and `eschulke@hotmail.com`
+  (the actual publisher — real admin access, can sign in for real now that
+  email delivery works).
 - **Homepage** ([`src/app/page.tsx`](src/app/page.tsx)) is the MSN-style
   dashboard described in Phase 2: hero, Trending Now, and topic rails driven
   by `HomepageModule`, all visible with zero login
 - `POST /api/subscribe` — creates/updates a `User` with selected `PreferenceTopic`s
-- Magic-link auth via Auth.js (`src/lib/auth.ts`), Prisma-backed sessions.
-  No real email provider configured yet — magic links log to the server
-  console in dev. Swap in `AUTH_RESEND_KEY` (or another provider) for Phase 5.
+- Magic-link auth via Auth.js (`src/lib/auth.ts`), Prisma-backed sessions —
+  see real email delivery note above.
 - `src/proxy.ts` assigns an anonymous `cw_guest_id` cookie to every visitor
   (Next.js renamed `middleware.ts` → `proxy.ts` in this version — verified
   against the bundled docs, not assumed from training data)
@@ -399,7 +406,10 @@ examples hit all of these — revisit before automating):
 
 ## Phase 5 — Newsletter delivery
 
-- [ ] Email provider (Resend/Postmark/SES)
+- [x] Email provider — Resend, wired up for magic-link auth (see "Current
+      state"). Sandbox sender only reaches the Resend account's own email;
+      **domain verification is still needed** before this can send to
+      actual newsletter subscribers, not just admins signing in
 - [ ] Digest generation: per active user, select `ContentItem`s matching their
       topics since their last issue
 - [ ] HTML email rendering (React Email/MJML) + `NewsletterIssue` record

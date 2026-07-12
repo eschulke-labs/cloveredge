@@ -291,14 +291,17 @@ async function main() {
     });
   }
 
-  await prisma.user.upsert({
-    where: { email: "admin@casinowatch.local" },
-    update: { isAdmin: true },
-    create: { email: "admin@casinowatch.local", isAdmin: true, tier: "PAID" },
-  });
+  const adminUsers = ["admin@casinowatch.local", "eschulke@hotmail.com"];
+  for (const email of adminUsers) {
+    await prisma.user.upsert({
+      where: { email },
+      update: { isAdmin: true },
+      create: { email, isAdmin: true, tier: "PAID" },
+    });
+  }
 
   console.log(
-    `Seeded ${TOPICS.length} topics, 2 casinos, 1 bonus, ${contentItems.length} content items, ${slotVideos.length} slot videos, ${homepageModules.length} homepage modules, 1 admin user.`,
+    `Seeded ${TOPICS.length} topics, 2 casinos, 1 bonus, ${contentItems.length} content items, ${slotVideos.length} slot videos, ${homepageModules.length} homepage modules, ${adminUsers.length} admin users.`,
   );
 }
 
