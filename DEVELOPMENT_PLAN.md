@@ -175,7 +175,7 @@ footnote.
 | Model | Purpose | Status |
 |---|---|---|
 | `User` | Account, jurisdiction, digest frequency, age-verification, `tier` (FREE/PAID) | Built |
-| `PreferenceTopic` | Opt-in unit — topic, region, or casino type | Built |
+| `PreferenceTopic` | Opt-in unit — topic, region, or casino type; `pinnedTrendingOrder` for admin Trending Now override | Built |
 | `Casino` | Online/land-based/hybrid entity | Built — needs rating breakdown fields (Phase 3) |
 | `Bonus` | Promo offers tied to a casino | Built |
 | `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID), `featured`/`featuredOrder` curate the "Top Story" carousel pool (order personalizes for signed-in preference matches, fixed default otherwise) | Built |
@@ -256,6 +256,18 @@ not just written.
       directly and needs no framework help since there's no route change
       happening. Verified via a real `.click()` dispatch that scroll
       position moves to the target section.
+- [x] Trending Now can be admin-pinned: `PreferenceTopic.pinnedTrendingOrder`
+      (nullable — null means "not pinned"). When **any** topic has a pin,
+      Trending Now shows **only** the pinned topics in pin order, full
+      override, completely ignoring the computed `GuestSignal` aggregate;
+      when nothing's pinned it falls back to the original real-click-data
+      behavior. Managed at `/admin/homepage` (new "Trending Now pins"
+      section, `updateTrendingPins` Server Action) — verified live: pinning
+      Game & Casino Videos (1) and Bonus & Promo Offers (2) made Trending
+      Now show exactly those two, in that order, replacing "Regulatory &
+      Legal News" which had been dominating from earlier testing clicks —
+      confirmed for both the signed-in admin session and anonymous (curl,
+      no cookies), since pins are a global setting, not personalization.
 - [x] Paywall teaser UI: rail/carousel cards always show title + excerpt
       (`ContentCard`, `Carousel`) with a "Subscribers only" badge; the full body
       is only gated at `/content/[slug]`, where non-entitled viewers see an

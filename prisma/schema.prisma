@@ -123,6 +123,12 @@ model PreferenceTopic {
   kind      TopicKind     @default(TOPIC)
   users     User[]        @relation("UserPreferences")
   content   ContentItem[] @relation("ContentTopics")
+
+  // Admin override for the Trending Now widget (/admin/homepage). Null =
+  // not pinned. When ANY topic has a non-null value, Trending Now shows
+  // exactly the pinned set in this order, full override — otherwise it
+  // falls back to the computed GuestSignal aggregate as before.
+  pinnedTrendingOrder Int?
 }
 
 enum TopicKind {

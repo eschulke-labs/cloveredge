@@ -34,3 +34,34 @@ export async function updateModuleOrder(formData: FormData) {
   revalidatePath("/admin/homepage");
   revalidatePath("/");
 }
+
+export async function updateTrendingPins(formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.isAdmin) {
+    throw new Error("Unauthorized");
+  }
+
+  const updates: { id: string; pinnedTrendingOrder: number | null }[] = [];
+  for (const [key, value] of formData.entries()) {
+    const match = key.match(/^pin:(.+)$/);
+    if (match) {
+      const trimmed = String(value).trim();
+      updates.push({
+        id: match[1],
+        pinnedTrendingOrder: trimmed === "" ? null : Number(trimmed),
+      });
+    }
+  }
+
+  await Promise.all(
+    updates.map((u) =>
+      prisma.preferenceTopic.update({
+        where: { id: u.id },
+        data: { pinnedTrendingOrder: u.pinnedTrendingOrder },
+      }),
+    ),
+  );
+
+  revalidatePath("/admin/homepage");
+  revalidatePath("/");
+}

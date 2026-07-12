@@ -155,25 +155,41 @@ export async function getHomepageData(): Promise<HomepageData> {
       video: item.video,
     }));
 
-  const trendingAgg = await prisma.guestSignal.groupBy({
-    by: ["topicSlug"],
-    _sum: { weight: true },
-    orderBy: { _sum: { weight: "desc" } },
-    take: 3,
+  // Admin override (/admin/homepage) takes full priority when set — pinned
+  // topics show in exactly the configured order, no blending with computed
+  // data. Falls back to the real click-aggregate below only when nothing's
+  // pinned, so "trending" stays authentic unless someone deliberately
+  // overrides it.
+  const pinned = await prisma.preferenceTopic.findMany({
+    where: { pinnedTrendingOrder: { not: null } },
+    orderBy: { pinnedTrendingOrder: "asc" },
+    select: { slug: true, label: true },
   });
-  const trendingTopics = trendingAgg.filter((t) => (t._sum.weight ?? 0) > 0);
-  const topicLabels = trendingTopics.length
-    ? await prisma.preferenceTopic.findMany({
-        where: { slug: { in: trendingTopics.map((t) => t.topicSlug) } },
-        select: { slug: true, label: true },
-      })
-    : [];
-  const labelBySlug = new Map(topicLabels.map((t) => [t.slug, t.label]));
-  const trending: TrendingTopic[] = trendingTopics.map((t) => ({
-    slug: t.topicSlug,
-    label: labelBySlug.get(t.topicSlug) ?? t.topicSlug,
-    weight: t._sum.weight ?? 0,
-  }));
+
+  let trending: TrendingTopic[];
+  if (pinned.length > 0) {
+    trending = pinned.map((t) => ({ slug: t.slug, label: t.label, weight: 0 }));
+  } else {
+    const trendingAgg = await prisma.guestSignal.groupBy({
+      by: ["topicSlug"],
+      _sum: { weight: true },
+      orderBy: { _sum: { weight: "desc" } },
+      take: 3,
+    });
+    const trendingTopics = trendingAgg.filter((t) => (t._sum.weight ?? 0) > 0);
+    const topicLabels = trendingTopics.length
+      ? await prisma.preferenceTopic.findMany({
+          where: { slug: { in: trendingTopics.map((t) => t.topicSlug) } },
+          select: { slug: true, label: true },
+        })
+      : [];
+    const labelBySlug = new Map(topicLabels.map((t) => [t.slug, t.label]));
+    trending = trendingTopics.map((t) => ({
+      slug: t.topicSlug,
+      label: labelBySlug.get(t.topicSlug) ?? t.topicSlug,
+      weight: t._sum.weight ?? 0,
+    }));
+  }
 
   return { viewerTier, featuredStories, trending, rails };
 }
