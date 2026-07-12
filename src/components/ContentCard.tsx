@@ -55,13 +55,7 @@ export function ContentCard({
 
   if (video) {
     return (
-      <a
-        href={`https://www.youtube.com/watch?v=${video.youtubeVideoId}`}
-        target="_blank"
-        rel="noreferrer"
-        onClick={trackClick}
-        className={cardClass}
-      >
+      <Link href={`/content/${slug}`} onClick={trackClick} className={cardClass}>
         <div className="relative aspect-video w-full bg-black">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -93,7 +87,7 @@ export function ContentCard({
             </span>
           </div>
         </div>
-      </a>
+      </Link>
     );
   }
 

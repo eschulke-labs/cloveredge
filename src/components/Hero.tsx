@@ -11,15 +11,12 @@ export function Hero({
   viewerTier: HomepageData["viewerTier"];
 }) {
   const entitled = isEntitled(item.tier, viewerTier);
-  const href = item.video
-    ? `https://www.youtube.com/watch?v=${item.video.youtubeVideoId}`
-    : `/content/${item.slug}`;
-  const linkProps = item.video
-    ? { target: "_blank" as const, rel: "noreferrer" }
-    : {};
 
-  const content = (
-    <>
+  return (
+    <Link
+      href={`/content/${item.slug}`}
+      className="group relative block overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-violet-900 to-fuchsia-800 p-8 shadow-lg shadow-violet-900/20 transition-transform hover:-translate-y-0.5 sm:p-10"
+    >
       <div
         aria-hidden
         className="pointer-events-none absolute -right-10 -top-10 text-[10rem] leading-none opacity-10 transition-opacity group-hover:opacity-20"
@@ -45,23 +42,6 @@ export function Hero({
       {item.excerpt && (
         <p className="relative mt-3 max-w-xl text-violet-100">{item.excerpt}</p>
       )}
-    </>
-  );
-
-  const className =
-    "group relative block overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-900 via-violet-900 to-fuchsia-800 p-8 shadow-lg shadow-violet-900/20 transition-transform hover:-translate-y-0.5 sm:p-10";
-
-  if (item.video) {
-    return (
-      <a href={href} {...linkProps} className={className}>
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <Link href={href} className={className}>
-      {content}
     </Link>
   );
 }
