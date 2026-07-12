@@ -178,6 +178,13 @@ model ContentItem {
   // like everything else, without duplicating that plumbing on VideoEmbed.
   video   VideoEmbed? @relation(fields: [videoId], references: [id])
   videoId String?     @unique
+
+  // Fixed editorial carousel ("Top Story") — deliberately NOT part of
+  // personalization/guest-signal scoring. Curated by an editor (currently
+  // via seed.ts; an admin UI for this is a later item), same set for every
+  // visitor. featuredOrder is nullable so non-featured items don't need one.
+  featured      Boolean @default(false)
+  featuredOrder Int?
 }
 
 // Snapshot of a sent (or previewed) newsletter issue, for history/debugging
@@ -223,7 +230,9 @@ enum ModuleType {
 
 // Editorial config for a homepage section — which rail, in what order, filtered
 // to which topic. Reordered via /admin/homepage. `topicSlug` is null for
-// HERO (picks latest content overall) and TRENDING (computed from GuestSignal).
+// HERO (this row is just the on/off toggle for the fixed "Top Story" carousel —
+// the actual curated items are ContentItem.featured/featuredOrder, deliberately
+// NOT part of personalization scoring) and TRENDING (computed from GuestSignal).
 model HomepageModule {
   id        String     @id @default(cuid())
   key       String     @unique

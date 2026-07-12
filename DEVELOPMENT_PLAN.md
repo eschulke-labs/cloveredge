@@ -178,7 +178,7 @@ footnote.
 | `PreferenceTopic` | Opt-in unit — topic, region, or casino type | Built |
 | `Casino` | Online/land-based/hybrid entity | Built — needs rating breakdown fields (Phase 3) |
 | `Bonus` | Promo offers tied to a casino | Built |
-| `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID) | Built |
+| `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID), `featured`/`featuredOrder` for the fixed "Top Story" carousel (not personalization) | Built |
 | `NewsletterIssue` | Sent-issue snapshot | Built |
 | `Comment` | User review/comment on a casino experience, optional 1-5 rating, moderation status | Built |
 | `Account` / `Session` / `VerificationToken` | Auth.js magic-link sign-in (Prisma adapter) | Built |
@@ -216,6 +216,20 @@ not just written.
       DB row and the rendered position
 - [x] Server-rendered hero + rails pulling from `ContentItem`, this is the
       page's default, logged-out state (`getHomepageData` in `src/lib/homepage.ts`)
+- [x] "Top Story" is a fixed carousel, not part of personalization —
+      `ContentItem.featured`/`featuredOrder` (schema) curate a set of stories
+      (currently 13 real items — 15 is the target capacity, not yet reached;
+      more get added as content grows, not padded with filler) shown in the
+      same order to every visitor regardless of preferences or guest signals.
+      `Carousel` ([`src/components/Carousel.tsx`](src/components/Carousel.tsx))
+      auto-advances every 7s, pauses on hover, and has manual prev/next +
+      dot navigation — verified: initial server-rendered slide (no client JS
+      run yet) matches the curated `featuredOrder: 0` item exactly, and
+      auto-advance/manual controls both work live. Hit a real bug building
+      this: a client component importing anything from a module that also
+      uses `next/headers` breaks the build even for unrelated exports —
+      fixed by extracting `isEntitled`/`ViewerTier` into a dependency-free
+      [`src/lib/entitlement.ts`](src/lib/entitlement.ts)
 - [x] Guest personalization: an anonymous `cw_guest_id` cookie (set in
       `src/proxy.ts`, no PII) plus `GuestSignal` rows recording which topics a
       visitor clicks into, boosting (not hiding) matching rails — verified:
@@ -224,8 +238,8 @@ not just written.
       higher than guest clicks, so an account's stated preferences win
 - [x] Trending Now module: top 3 topics by aggregate `GuestSignal` weight
       across all guests — verified rendering after generating signals
-- [x] Paywall teaser UI: rail/hero cards always show title + excerpt
-      (`ContentCard`, `Hero`) with a "Subscribers only" badge; the full body
+- [x] Paywall teaser UI: rail/carousel cards always show title + excerpt
+      (`ContentCard`, `Carousel`) with a "Subscribers only" badge; the full body
       is only gated at `/content/[slug]`, where non-entitled viewers see an
       upgrade CTA instead of `item.body` — verified for both a `PAID` item
       (gated) and a `FREE` item (shown in full) while signed in as a FREE user

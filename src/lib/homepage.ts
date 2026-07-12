@@ -1,8 +1,10 @@
 import { prisma } from "./prisma";
 import { auth } from "./auth";
 import { getGuestId } from "./guest";
+import { isEntitled, type ViewerTier } from "./entitlement";
 
-export type ViewerTier = "ANON" | "FREE" | "PAID";
+export type { ViewerTier };
+export { isEntitled };
 
 export type VideoInfo = {
   youtubeVideoId: string;
@@ -35,7 +37,7 @@ export type TrendingTopic = {
 
 export type HomepageData = {
   viewerTier: ViewerTier;
-  hero: RailData["items"][number] | null;
+  featuredStories: RailData["items"];
   trending: TrendingTopic[];
   rails: RailData[];
 };
@@ -110,9 +112,11 @@ export async function getHomepageData(): Promise<HomepageData> {
     }),
   );
 
-  const heroItem = await prisma.contentItem.findFirst({
-    where: { publishedAt: { not: null } },
-    orderBy: { publishedAt: "desc" },
+  // Fixed carousel — NOT scored/reordered by preferences or guest signals,
+  // deliberately. Same curated set and order for every visitor.
+  const featuredStories = await prisma.contentItem.findMany({
+    where: { featured: true, publishedAt: { not: null } },
+    orderBy: [{ featuredOrder: "asc" }, { publishedAt: "desc" }],
     select: {
       slug: true,
       title: true,
@@ -152,9 +156,5 @@ export async function getHomepageData(): Promise<HomepageData> {
     weight: t._sum.weight ?? 0,
   }));
 
-  return { viewerTier, hero: heroItem, trending, rails };
-}
-
-export function isEntitled(tier: "FREE" | "PAID", viewerTier: ViewerTier) {
-  return tier === "FREE" || viewerTier === "PAID";
+  return { viewerTier, featuredStories, trending, rails };
 }

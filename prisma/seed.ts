@@ -73,6 +73,8 @@ async function main() {
       contentType: "NEWS" as const,
       tier: "FREE" as const,
       topics: ["online-casino-news"],
+      featured: true,
+      featuredOrder: 0,
     },
     {
       slug: "deep-dive-payout-speed-analysis",
@@ -83,6 +85,8 @@ async function main() {
       tier: "PAID" as const,
       casinoId: luckyRiver.id,
       topics: ["online-casino-news"],
+      featured: true,
+      featuredOrder: 12,
     },
     {
       slug: "lucky-river-refreshes-welcome-bonus",
@@ -93,6 +97,8 @@ async function main() {
       tier: "FREE" as const,
       casinoId: luckyRiver.id,
       topics: ["bonus-offers"],
+      featured: true,
+      featuredOrder: 2,
     },
     {
       slug: "golden-spade-resort-opens-new-wing",
@@ -103,6 +109,8 @@ async function main() {
       tier: "FREE" as const,
       casinoId: goldenSpade.id,
       topics: ["land-based-openings"],
+      featured: true,
+      featuredOrder: 4,
     },
     {
       slug: "state-regulator-updates-licensing-rules",
@@ -112,6 +120,8 @@ async function main() {
       contentType: "REGULATORY" as const,
       tier: "FREE" as const,
       topics: ["regulatory-news"],
+      featured: true,
+      featuredOrder: 6,
     },
     {
       slug: "how-to-set-deposit-limits",
@@ -121,6 +131,8 @@ async function main() {
       contentType: "RESPONSIBLE_GAMBLING" as const,
       tier: "FREE" as const,
       topics: ["responsible-gambling"],
+      featured: true,
+      featuredOrder: 8,
     },
     {
       slug: "weekend-sports-betting-lines-preview",
@@ -130,6 +142,8 @@ async function main() {
       contentType: "ODDS_UPDATE" as const,
       tier: "FREE" as const,
       topics: ["sports-betting"],
+      featured: true,
+      featuredOrder: 10,
     },
     {
       slug: "prediction-market-odds-next-state-to-legalize",
@@ -139,6 +153,8 @@ async function main() {
       contentType: "ODDS_UPDATE" as const,
       tier: "FREE" as const,
       topics: ["prediction-markets"],
+      featured: true,
+      featuredOrder: 11,
     },
   ];
 
@@ -157,6 +173,7 @@ async function main() {
       youtubePublishedAt: new Date("2026-07-12T16:58:06Z"),
       venueType: "LAND_BASED" as const,
       sentiment: "MIXED" as const,
+      featuredOrder: 1,
     },
     {
       youtubeVideoId: "wmp61xfzZCE",
@@ -168,6 +185,7 @@ async function main() {
       youtubePublishedAt: new Date("2026-07-12T16:30:05Z"),
       venueType: "LAND_BASED" as const,
       sentiment: "WIN" as const,
+      featuredOrder: 3,
     },
     {
       youtubeVideoId: "B7ltdMq7vA0",
@@ -179,6 +197,7 @@ async function main() {
       youtubePublishedAt: new Date("2026-07-12T16:00:04Z"),
       venueType: "LAND_BASED" as const,
       sentiment: "WIN" as const,
+      featuredOrder: 5,
     },
     {
       youtubeVideoId: "iRWv5jBV8L8",
@@ -190,6 +209,7 @@ async function main() {
       youtubePublishedAt: new Date("2026-07-12T15:33:34Z"),
       venueType: "LAND_BASED" as const,
       sentiment: "UNKNOWN" as const,
+      featuredOrder: 7,
     },
     {
       youtubeVideoId: "fAABXRz629M",
@@ -201,10 +221,11 @@ async function main() {
       youtubePublishedAt: new Date("2026-07-12T13:15:35Z"),
       venueType: "LAND_BASED" as const,
       sentiment: "UNKNOWN" as const,
+      featuredOrder: 9,
     },
   ];
 
-  for (const v of slotVideos) {
+  for (const { featuredOrder, ...v } of slotVideos) {
     const video = await prisma.videoEmbed.upsert({
       where: { youtubeVideoId: v.youtubeVideoId },
       update: {},
@@ -212,7 +233,7 @@ async function main() {
     });
     await prisma.contentItem.upsert({
       where: { slug: `video-${v.youtubeVideoId}` },
-      update: {},
+      update: { featured: true, featuredOrder },
       create: {
         title: v.title,
         slug: `video-${v.youtubeVideoId}`,
@@ -225,6 +246,8 @@ async function main() {
         publishedAt: v.youtubePublishedAt,
         videoId: video.id,
         topics: { connect: [{ slug: "game-videos" }] },
+        featured: true,
+        featuredOrder,
       },
     });
   }
@@ -233,7 +256,7 @@ async function main() {
     const { topics, ...data } = item;
     await prisma.contentItem.upsert({
       where: { slug: item.slug },
-      update: {},
+      update: { featured: data.featured, featuredOrder: data.featuredOrder },
       create: {
         ...data,
         source: "MANUAL",

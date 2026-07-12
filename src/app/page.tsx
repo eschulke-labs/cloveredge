@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getHomepageData } from "@/lib/homepage";
 import { SubscribeForm } from "@/components/SubscribeForm";
-import { Hero } from "@/components/Hero";
+import { Carousel } from "@/components/Carousel";
 import { TrendingWidget } from "@/components/TrendingWidget";
 import { Rail } from "@/components/Rail";
 
 export default async function Home() {
-  const [{ hero, trending, rails, viewerTier }, session, topics] = await Promise.all([
+  const [{ featuredStories, trending, rails, viewerTier }, session, topics] = await Promise.all([
     getHomepageData(),
     auth(),
     prisma.preferenceTopic.findMany({
@@ -50,7 +50,7 @@ export default async function Home() {
       </header>
 
       <div className="mx-auto max-w-5xl px-6 pb-8">
-        {hero && <Hero item={hero} viewerTier={viewerTier} />}
+        <Carousel stories={featuredStories} viewerTier={viewerTier} />
       </div>
 
       <div className="mx-auto max-w-5xl space-y-10 px-6 pb-16">
