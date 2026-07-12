@@ -230,6 +230,13 @@ not just written.
       upgrade CTA instead of `item.body` — verified for both a `PAID` item
       (gated) and a `FREE` item (shown in full) while signed in as a FREE user
 
+**Decided**: regular users don't get a direct "drag to reorder my homepage"
+control — only admins do (`/admin/homepage`). For everyone else, ordering is
+*indirect*: picking topics in the subscribe form, or just clicking around as
+a guest, is what surfaces "the modules that matter to them." Considered
+adding an explicit per-user reorder UI and decided against it for now — the
+indirect signal is the intended experience, not a placeholder for it.
+
 Not built in this phase (left for later, not blocking): cached/ISR'd rails
 (currently fetched fresh per request — fine at current scale, revisit if
 traffic grows), and per-content-item (vs. per-topic) guest signal granularity.
