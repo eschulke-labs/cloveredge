@@ -178,7 +178,7 @@ footnote.
 | `PreferenceTopic` | Opt-in unit — topic, region, or casino type | Built |
 | `Casino` | Online/land-based/hybrid entity | Built — needs rating breakdown fields (Phase 3) |
 | `Bonus` | Promo offers tied to a casino | Built |
-| `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID), `featured`/`featuredOrder` for the fixed "Top Story" carousel (not personalization) | Built |
+| `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID), `featured`/`featuredOrder` curate the "Top Story" carousel pool (order personalizes for signed-in preference matches, fixed default otherwise) | Built |
 | `NewsletterIssue` | Sent-issue snapshot | Built |
 | `Comment` | User review/comment on a casino experience, optional 1-5 rating, moderation status | Built |
 | `Account` / `Session` / `VerificationToken` | Auth.js magic-link sign-in (Prisma adapter) | Built |
@@ -216,20 +216,28 @@ not just written.
       DB row and the rendered position
 - [x] Server-rendered hero + rails pulling from `ContentItem`, this is the
       page's default, logged-out state (`getHomepageData` in `src/lib/homepage.ts`)
-- [x] "Top Story" is a fixed carousel, not part of personalization —
-      `ContentItem.featured`/`featuredOrder` (schema) curate a set of stories
-      (currently 13 real items — 15 is the target capacity, not yet reached;
-      more get added as content grows, not padded with filler) shown in the
-      same order to every visitor regardless of preferences or guest signals.
-      `Carousel` ([`src/components/Carousel.tsx`](src/components/Carousel.tsx))
+- [x] "Top Story" is a fixed-pool carousel: `ContentItem.featured`/
+      `featuredOrder` (schema) curate a set of stories (currently 13 real
+      items — 15 is the target capacity, not yet reached; more get added as
+      content grows, not padded with filler). **Default order is fixed and
+      identical for every anonymous/no-preference visitor**; signed-in users
+      who've set topic preferences (subscribe form) get that same pool
+      reordered — stories matching their topics float to the front, same
+      "boost don't hide" stable-sort pattern the rails use, reusing the
+      exact `PreferenceTopic` data already collected for rails (no new
+      preference UI needed). Deliberately **not** driven by passive
+      `GuestSignal` click-tracking — only an explicit, subscribed
+      preference personalizes it. `Carousel`
+      ([`src/components/Carousel.tsx`](src/components/Carousel.tsx))
       auto-advances every 7s, pauses on hover, and has manual prev/next +
-      dot navigation — verified: initial server-rendered slide (no client JS
-      run yet) matches the curated `featuredOrder: 0` item exactly, and
-      auto-advance/manual controls both work live. Hit a real bug building
-      this: a client component importing anything from a module that also
-      uses `next/headers` breaks the build even for unrelated exports —
-      fixed by extracting `isEntitled`/`ViewerTier` into a dependency-free
-      [`src/lib/entitlement.ts`](src/lib/entitlement.ts)
+      dot navigation — verified: anonymous request shows "Welcome to
+      CasinoWatch" (the `featuredOrder: 0` item) first; setting a
+      "Bonus & Promo Offers" preference for a signed-in test account
+      correctly moved a bonus-tagged story to the front instead. Hit a real
+      bug building this: a client component importing anything from a
+      module that also uses `next/headers` breaks the build even for
+      unrelated exports — fixed by extracting `isEntitled`/`ViewerTier`
+      into a dependency-free [`src/lib/entitlement.ts`](src/lib/entitlement.ts)
 - [x] Guest personalization: an anonymous `cw_guest_id` cookie (set in
       `src/proxy.ts`, no PII) plus `GuestSignal` rows recording which topics a
       visitor clicks into, boosting (not hiding) matching rails — verified:

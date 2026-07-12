@@ -112,9 +112,13 @@ export async function getHomepageData(): Promise<HomepageData> {
     }),
   );
 
-  // Fixed carousel — NOT scored/reordered by preferences or guest signals,
-  // deliberately. Same curated set and order for every visitor.
-  const featuredStories = await prisma.contentItem.findMany({
+  // Fixed candidate pool (same curated stories for everyone) — but the
+  // ORDER personalizes for signed-in users with topic preferences: matching
+  // stories float to the front, same "boost don't hide" pattern as rails.
+  // Anonymous/no-preference visitors see the pure editorial order, since
+  // preferenceTopics is an empty set for them (every score ties at 0, so
+  // the stable sort falls through to the original featuredOrder).
+  const featuredCandidates = await prisma.contentItem.findMany({
     where: { featured: true, publishedAt: { not: null } },
     orderBy: [{ featuredOrder: "asc" }, { publishedAt: "desc" }],
     select: {
@@ -122,6 +126,7 @@ export async function getHomepageData(): Promise<HomepageData> {
       title: true,
       excerpt: true,
       tier: true,
+      topics: { select: { slug: true } },
       video: {
         select: {
           youtubeVideoId: true,
@@ -135,6 +140,20 @@ export async function getHomepageData(): Promise<HomepageData> {
       },
     },
   });
+  const featuredStories = featuredCandidates
+    .map((item, originalIndex) => ({
+      item,
+      originalIndex,
+      matches: item.topics.some((t) => preferenceTopics.has(t.slug)),
+    }))
+    .sort((a, b) => Number(b.matches) - Number(a.matches) || a.originalIndex - b.originalIndex)
+    .map(({ item }) => ({
+      slug: item.slug,
+      title: item.title,
+      excerpt: item.excerpt,
+      tier: item.tier,
+      video: item.video,
+    }));
 
   const trendingAgg = await prisma.guestSignal.groupBy({
     by: ["topicSlug"],
