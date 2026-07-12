@@ -16,7 +16,7 @@ export function Rail({ rail, viewerTier }: { rail: RailData; viewerTier: ViewerT
   const viewAllHref = VIEW_ALL_HREF[rail.topicSlug];
 
   return (
-    <section>
+    <section id={`rail-${rail.topicSlug}`} className="scroll-mt-6">
       <div className="flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-gray-500">
           <span

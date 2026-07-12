@@ -246,6 +246,16 @@ not just written.
       higher than guest clicks, so an account's stated preferences win
 - [x] Trending Now module: top 3 topics by aggregate `GuestSignal` weight
       across all guests — verified rendering after generating signals
+- [x] Trending Now pills are clickable, jumping to that topic's rail
+      (`id="rail-{topicSlug}"` on `Rail`'s `<section>`). Hit a real Next.js
+      quirk: `<Link href="#rail-x">` updates the URL hash but doesn't
+      actually scroll for same-page anchor jumps — its scroll logic is
+      built around "is the destination *page* visible," not "scroll to this
+      specific hash target" — the fix was a plain `<a href="#...">` instead
+      of `<Link>`, which triggers the browser's native anchor behavior
+      directly and needs no framework help since there's no route change
+      happening. Verified via a real `.click()` dispatch that scroll
+      position moves to the target section.
 - [x] Paywall teaser UI: rail/carousel cards always show title + excerpt
       (`ContentCard`, `Carousel`) with a "Subscribers only" badge; the full body
       is only gated at `/content/[slug]`, where non-entitled viewers see an

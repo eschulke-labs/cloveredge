@@ -13,15 +13,16 @@ export function TrendingWidget({ trending }: { trending: TrendingTopic[] }) {
         {trending.map((topic, i) => {
           const style = getTopicStyle(topic.slug);
           return (
-            <span
+            <a
               key={topic.slug}
-              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm ${style.badge} ${
+              href={`#rail-${topic.slug}`}
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition-transform hover:-translate-y-0.5 ${style.badge} ${
                 i === 0 ? "ring-2 ring-amber-400/60" : ""
               }`}
             >
               <span aria-hidden>{style.icon}</span>
               {topic.label}
-            </span>
+            </a>
           );
         })}
       </div>
