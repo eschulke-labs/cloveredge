@@ -4,6 +4,16 @@ import { getGuestId } from "./guest";
 
 export type ViewerTier = "ANON" | "FREE" | "PAID";
 
+export type VideoInfo = {
+  youtubeVideoId: string;
+  thumbnailUrl: string;
+  durationSeconds: number;
+  channelTitle: string;
+  gameType: string;
+  venueType: string;
+  sentiment: string;
+};
+
 export type RailData = {
   key: string;
   title: string;
@@ -13,6 +23,7 @@ export type RailData = {
     title: string;
     excerpt: string | null;
     tier: "FREE" | "PAID";
+    video: VideoInfo | null;
   }[];
 };
 
@@ -77,7 +88,23 @@ export async function getHomepageData(): Promise<HomepageData> {
         where: { topics: { some: { slug: module.topicSlug! } }, publishedAt: { not: null } },
         orderBy: { publishedAt: "desc" },
         take: ITEMS_PER_RAIL,
-        select: { slug: true, title: true, excerpt: true, tier: true },
+        select: {
+          slug: true,
+          title: true,
+          excerpt: true,
+          tier: true,
+          video: {
+            select: {
+              youtubeVideoId: true,
+              thumbnailUrl: true,
+              durationSeconds: true,
+              channelTitle: true,
+              gameType: true,
+              venueType: true,
+              sentiment: true,
+            },
+          },
+        },
       });
       return { key: module.key, title: module.title, topicSlug: module.topicSlug!, items };
     }),
@@ -86,7 +113,23 @@ export async function getHomepageData(): Promise<HomepageData> {
   const heroItem = await prisma.contentItem.findFirst({
     where: { publishedAt: { not: null } },
     orderBy: { publishedAt: "desc" },
-    select: { slug: true, title: true, excerpt: true, tier: true },
+    select: {
+      slug: true,
+      title: true,
+      excerpt: true,
+      tier: true,
+      video: {
+        select: {
+          youtubeVideoId: true,
+          thumbnailUrl: true,
+          durationSeconds: true,
+          channelTitle: true,
+          gameType: true,
+          venueType: true,
+          sentiment: true,
+        },
+      },
+    },
   });
 
   const trendingAgg = await prisma.guestSignal.groupBy({

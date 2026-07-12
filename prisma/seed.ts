@@ -140,16 +140,94 @@ async function main() {
       tier: "FREE" as const,
       topics: ["prediction-markets"],
     },
+  ];
+
+  // Real YouTube slot-play videos pulled via the Data API, classified using
+  // the taxonomy from DEVELOPMENT_PLAN.md Phase 4 (game type / venue /
+  // sentiment aren't official API fields — see that doc for the reasoning
+  // behind each call, including which ones are still "UNKNOWN" on purpose).
+  const slotVideos = [
     {
-      slug: "watch-top-slot-bonus-rounds-this-week",
-      title: "Watch: Top Slot Bonus Rounds This Week",
-      excerpt: "Video roundup of the biggest bonus-round wins streamers hit this week.",
-      body: "Placeholder for embedded video content (Phase 4 will pull this from the YouTube Data API and store it as VideoEmbed rows, including creator-submitted channels).",
-      contentType: "NEWS" as const,
-      tier: "FREE" as const,
-      topics: ["game-videos"],
+      youtubeVideoId: "dJhJLyV7aoM",
+      title: "HLS Slots is live!",
+      channelTitle: "HLS Slots",
+      thumbnailUrl: "https://i.ytimg.com/vi/dJhJLyV7aoM/hqdefault.jpg",
+      durationSeconds: 3429,
+      viewCount: 6096,
+      youtubePublishedAt: new Date("2026-07-12T16:58:06Z"),
+      venueType: "LAND_BASED" as const,
+      sentiment: "MIXED" as const,
+    },
+    {
+      youtubeVideoId: "wmp61xfzZCE",
+      title: "MAXED OUT UNICOW BONUS ON $15 BET! MONSTER JACKPOT HANDPAY!!!!",
+      channelTitle: "NE SLOTS (aka NewEnglander82)",
+      thumbnailUrl: "https://i.ytimg.com/vi/wmp61xfzZCE/hqdefault.jpg",
+      durationSeconds: 3256,
+      viewCount: 1614,
+      youtubePublishedAt: new Date("2026-07-12T16:30:05Z"),
+      venueType: "LAND_BASED" as const,
+      sentiment: "WIN" as const,
+    },
+    {
+      youtubeVideoId: "B7ltdMq7vA0",
+      title: "Yo Yeti Bonus",
+      channelTitle: "Adventures In Vegas",
+      thumbnailUrl: "https://i.ytimg.com/vi/B7ltdMq7vA0/hqdefault.jpg",
+      durationSeconds: 113,
+      viewCount: 350,
+      youtubePublishedAt: new Date("2026-07-12T16:00:04Z"),
+      venueType: "LAND_BASED" as const,
+      sentiment: "WIN" as const,
+    },
+    {
+      youtubeVideoId: "iRWv5jBV8L8",
+      title: "SUNDAY CASINO LIVE SLOT PLAY PART 2!",
+      channelTitle: "LuckySnoop888 Jackpot Hound",
+      thumbnailUrl: "https://i.ytimg.com/vi/iRWv5jBV8L8/hqdefault.jpg",
+      durationSeconds: 6770,
+      viewCount: 15548,
+      youtubePublishedAt: new Date("2026-07-12T15:33:34Z"),
+      venueType: "LAND_BASED" as const,
+      sentiment: "UNKNOWN" as const,
+    },
+    {
+      youtubeVideoId: "fAABXRz629M",
+      title: "Buffalo Gold Revolution Live Play",
+      channelTitle: "Wrauberto Slots",
+      thumbnailUrl: "https://i.ytimg.com/vi/fAABXRz629M/hqdefault.jpg",
+      durationSeconds: 1250,
+      viewCount: 887,
+      youtubePublishedAt: new Date("2026-07-12T13:15:35Z"),
+      venueType: "LAND_BASED" as const,
+      sentiment: "UNKNOWN" as const,
     },
   ];
+
+  for (const v of slotVideos) {
+    const video = await prisma.videoEmbed.upsert({
+      where: { youtubeVideoId: v.youtubeVideoId },
+      update: {},
+      create: { ...v, gameType: "SLOTS" },
+    });
+    await prisma.contentItem.upsert({
+      where: { slug: `video-${v.youtubeVideoId}` },
+      update: {},
+      create: {
+        title: v.title,
+        slug: `video-${v.youtubeVideoId}`,
+        excerpt: `${v.channelTitle} · ${Math.round(v.durationSeconds / 60)} min`,
+        body: `https://www.youtube.com/watch?v=${v.youtubeVideoId}`,
+        contentType: "GAMEPLAY_VIDEO",
+        source: "FEED",
+        sourceUrl: `https://www.youtube.com/watch?v=${v.youtubeVideoId}`,
+        tier: "FREE",
+        publishedAt: v.youtubePublishedAt,
+        videoId: video.id,
+        topics: { connect: [{ slug: "game-videos" }] },
+      },
+    });
+  }
 
   for (const item of contentItems) {
     const { topics, ...data } = item;
@@ -193,7 +271,7 @@ async function main() {
   });
 
   console.log(
-    `Seeded ${TOPICS.length} topics, 2 casinos, 1 bonus, ${contentItems.length} content items, ${homepageModules.length} homepage modules, 1 admin user.`,
+    `Seeded ${TOPICS.length} topics, 2 casinos, 1 bonus, ${contentItems.length} content items, ${slotVideos.length} slot videos, ${homepageModules.length} homepage modules, 1 admin user.`,
   );
 }
 

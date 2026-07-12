@@ -86,6 +86,11 @@ footnote.
   (Next.js renamed `middleware.ts` → `proxy.ts` in this version — verified
   against the bundled docs, not assumed from training data)
 - Prisma client singleton at [`src/lib/prisma.ts`](src/lib/prisma.ts)
+- `YOUTUBE_API_KEY` (local `.env` only, restricted to YouTube Data API v3) —
+  used by `prisma/seed.ts` to pull real video data at seed time. The running
+  app doesn't call the YouTube API itself yet (videos are read from
+  `VideoEmbed` rows already in Postgres), so this key isn't needed on Vercel
+  until Phase 4's scheduled refresh job gets built.
 
 ## Data model summary (current + planned additions)
 
@@ -104,7 +109,7 @@ footnote.
 | `SlotGame` | Slot title, provider, RTP, volatility, source attribution | Planned — Phase 3 |
 | `CasinoRatingCriteria` | Scored sub-categories (trust, payout speed, game variety, support) rolling up to `Casino.ratingAvg` | Planned — Phase 3 |
 | `OddsSnapshot` | Cached Polymarket market/price snapshot, polled periodically | Planned — Phase 4 |
-| `VideoEmbed` | YouTube video reference + channel metadata, tied to `ContentItem` or standalone | Planned — Phase 4 |
+| `VideoEmbed` | Real YouTube video (official metadata) + `gameType`/`venueType`/`sentiment` (classification, not official API fields), one-to-one with a `ContentItem` | Built — populated with 5 real slot videos; other game types/automation still open |
 | `CreatorProfile` | Content creator/channel submission for promotion (status: pending/approved, featured flag) | Planned — Phase 4 |
 
 ## Phase 1 — Foundation (local dev loop) — done
@@ -201,10 +206,59 @@ show hand-written placeholder items, not live Polymarket/YouTube data.
       categories fit the audience), stored as `OddsSnapshot`, rendered in the
       existing "Prediction Markets" rail (replacing the placeholder item)
       with an "implied probability, not a bet" disclaimer
-- [ ] `VideoEmbed` model + YouTube integration: curate channel/video IDs
-      (via editorial pick or creator submission below), refresh via cheap
-      `videos.list` calls, embed in the existing "Game & Casino Videos" rail
-      (replacing the placeholder item)
+### YouTube gameplay videos — slots live, other game types researched but not built
+
+**Live now**: `VideoEmbed` model (built) + real YouTube Data API integration,
+populating the "Game & Casino Videos" rail with 5 real slot-play videos
+(`prisma/seed.ts`) — this is the initial focus per direction; other game
+types are researched below but intentionally not populated yet.
+
+**API research findings** (pulled real sample videos, not just docs):
+
+- Official metadata (`videos.list` with `snippet`/`contentDetails`/
+  `statistics`) gives title, description, creator tags, duration, view/like
+  counts, and category — but **creator-set tags are unreliable even from
+  established channels** (a well-known gambling channel posted real
+  blackjack footage with zero tags). Title text is the most consistently
+  present signal.
+- **`categoryId` is too coarse to trust alone** — real gameplay and an
+  unrelated indie-game trailer both landed in category 20 ("Gaming").
+  Keyword search alone surfaces false positives (non-gameplay content) that
+  need filtering before display.
+- **No official transcript access** for videos you don't own (`captions.
+  download` requires OAuth + ownership). The common workaround (scraping
+  YouTube's internal `timedtext` endpoint) is not sanctioned by YouTube's
+  terms — decided **not** to do this. Thumbnail image + title/description
+  is the fallback for sparse-metadata videos instead, and it works: tested
+  on a 24-second untagged clip and correctly identified it as a blackjack
+  table, a big chip stack, and a streamer reacting, purely from the image.
+- `gameType` / `venueType` / `sentiment` on `VideoEmbed` are **not official
+  YouTube fields** — they're filled in by a classification step (title +
+  description + tags + thumbnail review), currently done manually per video
+  as a training exercise, not yet automated.
+
+**Open classification questions from the first training pass** (real
+examples hit all of these — revisit before automating):
+1. Keyword search returns non-gameplay false positives (e.g. a video-game
+   trailer that mentions "casino") — needs a pre-filter, not yet designed.
+2. Some videos give no signal on outcome (e.g. an ongoing "Part 2" session)
+   — currently tagged `sentiment: UNKNOWN` rather than guessed.
+3. Metadata can conflict (one video's title says "Vegas," its tags mention
+   online-casino platform names) — no resolution rule decided yet for
+   title-vs-tags disagreement.
+4. Poker tournament coverage doesn't fit personal win/loss `sentiment` the
+   way solo-play clips do — may need its own `content_type` distinction
+   from personal gameplay clips rather than forcing it into `sentiment`.
+
+- [ ] Automate the classification step (currently manual) once the open
+      questions above have real answers — likely an LLM call per video
+      given title/description/tags/thumbnail, not a hand-written rule set
+- [ ] Expand `VideoEmbed` population beyond slots to blackjack/roulette/
+      poker/sports betting once the classification approach is solid
+- [ ] Refresh job (currently one-time seed data) — poll for new videos on
+      a schedule via cheap `videos.list` calls per the quota-caching rule
+- [ ] Filters UI on the "Game & Casino Videos" rail using `gameType`/
+      `venueType`/`sentiment` once there's enough classified volume to filter
 - [ ] Creator promotion program:
   - [ ] Public "submit your channel" form → `CreatorProfile` (pending status)
   - [ ] Admin approval workflow

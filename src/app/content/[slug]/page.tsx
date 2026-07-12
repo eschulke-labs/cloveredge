@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { isEntitled, type ViewerTier } from "@/lib/homepage";
@@ -11,11 +11,14 @@ export default async function ContentPage({
 }) {
   const { slug } = await params;
   const [item, session] = await Promise.all([
-    prisma.contentItem.findUnique({ where: { slug } }),
+    prisma.contentItem.findUnique({ where: { slug }, include: { video: true } }),
     auth(),
   ]);
 
   if (!item) notFound();
+
+  // Video content lives on YouTube — this page is for editorial articles.
+  if (item.video) redirect(`https://www.youtube.com/watch?v=${item.video.youtubeVideoId}`);
 
   const viewerTier: ViewerTier = session?.user ? session.user.tier : "ANON";
   const entitled = isEntitled(item.tier, viewerTier);

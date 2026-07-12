@@ -21,6 +21,7 @@ enum ContentType {
   ODDS_UPDATE
   REGULATORY
   RESPONSIBLE_GAMBLING
+  GAMEPLAY_VIDEO
 }
 
 enum ContentSource {
@@ -171,6 +172,12 @@ model ContentItem {
   publishedAt DateTime?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
+
+  // Set when contentType = GAMEPLAY_VIDEO. One-to-one: a video embed is
+  // always wrapped by exactly one ContentItem so it can carry topics/tier
+  // like everything else, without duplicating that plumbing on VideoEmbed.
+  video   VideoEmbed? @relation(fields: [videoId], references: [id])
+  videoId String?     @unique
 }
 
 // Snapshot of a sent (or previewed) newsletter issue, for history/debugging
@@ -239,4 +246,53 @@ model GuestSignal {
   updatedAt DateTime @updatedAt
 
   @@unique([guestId, topicSlug])
+}
+
+// All values the classification exercise identified as real categories,
+// even though initial content only populates SLOTS — keeping the enum
+// complete now avoids a migration when poker/roulette/sports betting videos
+// get added later.
+enum VideoGameType {
+  SLOTS
+  BLACKJACK
+  ROULETTE
+  POKER
+  SPORTS_BETTING
+  OTHER
+}
+
+enum VenueType {
+  ONLINE
+  LAND_BASED
+  UNKNOWN
+}
+
+enum VideoSentiment {
+  WIN
+  LOSS
+  MIXED
+  UNKNOWN
+}
+
+// A YouTube video pulled via the Data API (official metadata: title,
+// channel, duration, thumbnail, view count) plus gameType/venueType/
+// sentiment, which are NOT official API fields — they're filled in by the
+// classification process (title/description/tags/thumbnail review) since
+// YouTube doesn't expose structured "this is slots gameplay, a big win"
+// metadata itself. See DEVELOPMENT_PLAN.md Phase 4 for the classification
+// notes this was built from.
+model VideoEmbed {
+  id                 String         @id @default(cuid())
+  youtubeVideoId     String         @unique
+  title              String
+  channelTitle       String
+  thumbnailUrl       String
+  durationSeconds    Int
+  gameType           VideoGameType
+  venueType          VenueType      @default(UNKNOWN)
+  sentiment          VideoSentiment @default(UNKNOWN)
+  viewCount          Int?
+  youtubePublishedAt DateTime?
+  fetchedAt          DateTime       @default(now())
+  content            ContentItem?
 }
