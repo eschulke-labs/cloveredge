@@ -37,10 +37,19 @@ shows the same fixed set to everyone. The feature:
    return an empty state — that's expected and fine (clear "no blackjack
    videos yet" messaging beats hiding the option).
 
-- [ ] Filter chips UI on the "Game & Casino Videos" rail (gameType, venueType, sort)
-- [ ] Server-side filtering via URL search params in a dedicated video query
-      (extends `getHomepageData` in `src/lib/homepage.ts` or a sibling function)
-- [ ] Empty-state messaging per filter combination
+- [x] Filter chips UI — built as a dedicated `/videos` page
+      ([`src/app/videos/page.tsx`](src/app/videos/page.tsx)) rather than
+      cramming chips into the homepage rail's 4-item preview, since this is
+      the first main feature and deserves its own page. The homepage rail
+      now links out via "Filter & see all →" ([`src/components/Rail.tsx`](src/components/Rail.tsx))
+- [x] Server-side filtering via URL search params
+      ([`src/lib/videos.ts`](src/lib/videos.ts): `getVideos({ gameType, venueType, sort })`),
+      no client JS — filter chips are plain links, so `/videos?gameType=SLOTS`
+      is shareable/bookmarkable. Verified: filtering to `BLACKJACK` (no data
+      yet) shows the empty state; `SLOTS` + `sort=popular` returns all 5
+      real videos correctly ordered by view count (15,548 → 6,096 → 1,614 →
+      887 → 350)
+- [x] Empty-state messaging per filter combination — verified live
 - [ ] (Later) persist a signed-in user's preferred filter as their default
 - [ ] (Later) wire the same filter dimensions into the Phase 5 digest
 
@@ -95,7 +104,10 @@ below. Advertising doesn't get a free pass just because it's not the paywall.
   from day one via `ContentItem.source` (`MANUAL` | `FEED`).
 - **Which advertising path(s)** — gambling-specific ad network, affiliate
   revenue-share, or both. Both are viable per the research above; which to
-  pursue (and which specific network/partners) isn't decided yet.
+  pursue (and which specific network/partners) isn't decided yet. **Not
+  blocking anything** — any network-specific limits or restrictions get
+  dealt with whenever that work actually starts, not now. The current
+  priority is the free-account value (video filtering), not ad setup.
 
 Revisit once there's enough real content/usage to know what's worth building.
 
