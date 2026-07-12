@@ -243,23 +243,27 @@ async function main() {
     });
   }
 
+  // Editorial default order — the initial lineup per direction: videos,
+  // then bonuses, then regulatory news, ahead of everything else. This will
+  // change as the content mix evolves; reorder here (source of truth) or
+  // via /admin/homepage for one-off adjustments.
   const homepageModules = [
     { key: "hero", title: "Top Story", type: "HERO" as const, topicSlug: null, order: 0 },
     { key: "trending", title: "Trending Now", type: "TRENDING" as const, topicSlug: null, order: 1 },
-    { key: "rail:online-casino-news", title: "Online Casino News", type: "RAIL" as const, topicSlug: "online-casino-news", order: 2 },
+    { key: "rail:game-videos", title: "Game & Casino Videos", type: "RAIL" as const, topicSlug: "game-videos", order: 2 },
     { key: "rail:bonus-offers", title: "Bonus & Promo Offers", type: "RAIL" as const, topicSlug: "bonus-offers", order: 3 },
-    { key: "rail:land-based-openings", title: "Land-Based Openings & Events", type: "RAIL" as const, topicSlug: "land-based-openings", order: 4 },
-    { key: "rail:sports-betting", title: "Sports Betting", type: "RAIL" as const, topicSlug: "sports-betting", order: 5 },
-    { key: "rail:regulatory-news", title: "Regulatory & Legal News", type: "RAIL" as const, topicSlug: "regulatory-news", order: 6 },
-    { key: "rail:responsible-gambling", title: "Responsible Gambling Resources", type: "RAIL" as const, topicSlug: "responsible-gambling", order: 7 },
-    { key: "rail:prediction-markets", title: "Prediction Markets", type: "RAIL" as const, topicSlug: "prediction-markets", order: 8 },
-    { key: "rail:game-videos", title: "Game & Casino Videos", type: "RAIL" as const, topicSlug: "game-videos", order: 9 },
+    { key: "rail:regulatory-news", title: "Regulatory & Legal News", type: "RAIL" as const, topicSlug: "regulatory-news", order: 4 },
+    { key: "rail:online-casino-news", title: "Online Casino News", type: "RAIL" as const, topicSlug: "online-casino-news", order: 5 },
+    { key: "rail:land-based-openings", title: "Land-Based Openings & Events", type: "RAIL" as const, topicSlug: "land-based-openings", order: 6 },
+    { key: "rail:sports-betting", title: "Sports Betting", type: "RAIL" as const, topicSlug: "sports-betting", order: 7 },
+    { key: "rail:responsible-gambling", title: "Responsible Gambling Resources", type: "RAIL" as const, topicSlug: "responsible-gambling", order: 8 },
+    { key: "rail:prediction-markets", title: "Prediction Markets", type: "RAIL" as const, topicSlug: "prediction-markets", order: 9 },
   ];
 
   for (const mod of homepageModules) {
     await prisma.homepageModule.upsert({
       where: { key: mod.key },
-      update: {},
+      update: mod, // reseeding re-applies this order — was previously a no-op bug (`update: {}`)
       create: mod,
     });
   }
