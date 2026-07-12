@@ -8,6 +8,42 @@ layered on top for both anonymous visitors and signed-in users.
 
 Repo: [eschulke-labs/casinowatch](https://github.com/eschulke-labs/casinowatch) (private)
 
+## Current priority: video filtering is the first main feature (building now)
+
+Everything else in this document — ratings (Phase 3), prediction markets and
+creator promotion (rest of Phase 4), newsletter delivery (Phase 5), feed
+sourcing at scale (Phase 6), billing (Phase 7) — is real, scoped, and staying
+in the plan, but is now explicitly **secondary**. It gets built over time.
+The thing being built right now is: **letting people tell CasinoWatch what
+videos they want to see.**
+
+The video rail and the real slot-play videos in it (Phase 4) are the
+foundation this sits on. What's missing is user input — right now the rail
+shows the same fixed set to everyone. The feature:
+
+1. **On-page filters, no account required** — filter chips above the video
+   rail (and eventually its own `/videos` page once there's enough volume to
+   justify one) for the dimensions `VideoEmbed` already has: game type
+   (Slots/Blackjack/Roulette/Poker/Sports Betting), venue (Online/Land-Based),
+   and a sort (Newest/Most Viewed). Implemented as URL search params
+   (`?gameType=SLOTS`) rather than client-only state, so a filtered view is
+   shareable/bookmarkable and stays consistent with how the rest of the site
+   is server-rendered.
+2. **Saved preference for signed-in users (later, not blocking)** — remember
+   a user's last-used filter as their default view, and eventually feed the
+   same filter dimensions into the Phase 5 newsletter digest so the emailed
+   video picks match what someone actually filters for on-site.
+3. Since only slots are populated right now, most filter combinations will
+   return an empty state — that's expected and fine (clear "no blackjack
+   videos yet" messaging beats hiding the option).
+
+- [ ] Filter chips UI on the "Game & Casino Videos" rail (gameType, venueType, sort)
+- [ ] Server-side filtering via URL search params in a dedicated video query
+      (extends `getHomepageData` in `src/lib/homepage.ts` or a sibling function)
+- [ ] Empty-state messaging per filter combination
+- [ ] (Later) persist a signed-in user's preferred filter as their default
+- [ ] (Later) wire the same filter dimensions into the Phase 5 digest
+
 ## Monetization: subscription paywall (decided)
 
 Three access tiers:
@@ -310,10 +346,10 @@ examples hit all of these — revisit before automating):
 
 ## Immediate next steps
 
-1. Phase 3: casino/slot ratings + the paid-tier comment/review submission UI
-   (schema and access-tier rules already decided, just needs building)
-2. Prototype the Polymarket Gamma API call (unauthenticated, low risk) to
-   confirm what market categories are actually worth showing before building
-   the full odds widget (Phase 4)
-3. Revisit caching (ISR or a shorter-lived cache layer) on the homepage rails
-   once there's enough content volume for the per-request DB fetch to matter
+1. **Video filtering** (see "Current priority" above) — filter chips + URL
+   search params on the video rail; this is the active focus
+2. Everything below is real roadmap, not urgent right now:
+   - Phase 3: casino/slot ratings + the paid-tier comment/review submission UI
+   - Prototype the Polymarket Gamma API call before building the odds widget
+   - Revisit caching (ISR or a shorter-lived cache layer) on homepage rails
+     once there's enough content volume for the per-request DB fetch to matter
