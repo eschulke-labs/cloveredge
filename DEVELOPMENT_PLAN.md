@@ -44,30 +44,58 @@ shows the same fixed set to everyone. The feature:
 - [ ] (Later) persist a signed-in user's preferred filter as their default
 - [ ] (Later) wire the same filter dimensions into the Phase 5 digest
 
-## Monetization: subscription paywall (decided)
+## Monetization: advertising is primary, paid tier is not a growth priority (decided)
 
-Three access tiers:
+**The growth goal is free-account signups, not paid conversions.** The pitch
+to a visitor is: create a free account and get customization (video filters,
+topic preferences), notifications (the newsletter digest), and a curated
+feed of videos/news/information tuned to you — that curation *is* the value
+of the site. Revenue comes from **advertising**, not from charging visitors
+to unlock content.
+
+Three access tiers still exist in the schema, but the emphasis has shifted:
 
 1. **Anonymous** — no account. Sees the public MSN-style homepage/rails (Phase 2).
-2. **Free account** — signed up, gets newsletter delivery + basic preferences.
-3. **Paid subscriber** — everything free gets, plus `AccessTier.PAID`-gated content.
+2. **Free account — the actual growth target.** Signed up, gets newsletter
+   delivery, saved preferences/filters, notifications. This is the
+   "subscription" being sold, and it's free.
+3. **Paid subscriber** — `AccessTier.PAID`-gated content (e.g. the comment/
+   review feature) still exists and is still real, but converting people to
+   *pay* is explicitly **not a current priority**. Don't build more paid-only
+   features before the free-account growth loop (video filters →
+   personalization → newsletter → repeat visits) is working.
 
-`User.tier` and `ContentItem.tier` (`AccessTier`: `FREE` | `PAID`) are already in
-the schema. What's actually gated (deeper real-time data vs. exclusive editorial
-vs. both) is a content/product decision made per-item at publish time, not a
-schema one — deliberately generic so it doesn't need a migration later. Billing
-integration (Stripe, entitlement enforcement) is Phase 7.
+`User.tier` and `ContentItem.tier` (`AccessTier`: `FREE` | `PAID`) remain in
+the schema exactly as built — nothing to undo. Stripe/billing work (Phase 7)
+is now explicitly low priority, not removed.
 
-**Confirmed PAID-tier perk**: the ability to post comments/reviews (see
-Phase 3) is gated to paid subscribers, not just any signed-in free account —
-this is a deliberate incentive to upgrade, not merely content gating.
+**Advertising research**: standard Google AdSense / Ad Manager **does not
+work here** — Google's publisher policy restricts gambling-adjacent content
+from standard AdSense placements, separate from (and stricter than) the
+advertiser-side gambling-ad certification process. The viable paths instead:
+
+- **Gambling-specific ad networks** (RichAds, Adsterra, AdMaven, PropellerAds,
+  and similar) — CPM/CPC display advertising built for this vertical. Worth
+  a UX/brand caution: several of these networks lean on aggressive formats
+  (popunders, push notifications) that could clash with the site's editorial
+  feel — vet format options per-network before integrating, don't assume
+  "banner ad" is the only option offered.
+- **Affiliate revenue-share deals** with licensed casino operators — the
+  highest-earning model in this vertical per the research, but this is the
+  same mechanism as the "Affiliate links" open decision below: it requires
+  partnering with properly licensed operators, clear disclosure, and the
+  same compliance review as promotional content generally.
+
+Both paths route through the same compliance gate as before — see the flag
+below. Advertising doesn't get a free pass just because it's not the paywall.
 
 ## Open decisions (currently deferred by design)
 
 - **Content sourcing** — manual CMS entry vs. automated feeds, both supported
   from day one via `ContentItem.source` (`MANUAL` | `FEED`).
-- **Affiliate links** — separate from the subscription paywall above; still
-  undecided whether to add affiliate tracking on top. See Phase 7.
+- **Which advertising path(s)** — gambling-specific ad network, affiliate
+  revenue-share, or both. Both are viable per the research above; which to
+  pursue (and which specific network/partners) isn't decided yet.
 
 Revisit once there's enough real content/usage to know what's worth building.
 
@@ -81,6 +109,8 @@ Revisit once there's enough real content/usage to know what's worth building.
 | Online casino ratings | **Build in-house** | No viable licensing path found for AskGamblers/Casino.org-style data — it's proprietary editorial content; scraping it is a ToS/legal risk. CasinoWatch needs its own rating methodology (see Phase 3). |
 | Land-based casino info | [Google Places API](https://developers.google.com/maps/documentation/places/web-service/overview) | Legitimate documented access to name, address, hours, public rating, review snippets. Paid beyond a free monthly credit — budget for it. |
 | Sportsbook odds (optional, secondary) | The Odds API / OddsPapi / SportsGameOdds | Only pursue if sportsbook-style odds (not just prediction markets) become a priority — adds licensing cost and a second odds data model. |
+| Advertising (primary monetization) | Gambling-specific ad networks: RichAds, Adsterra, AdMaven, PropellerAds, etc. | **Standard Google AdSense doesn't work for gambling-adjacent content** — restricted by Google's publisher policy. These networks are built for this vertical instead; some lean on aggressive formats (popunder/push) worth vetting per-network before integrating. |
+| Affiliate revenue-share (alternate/complementary monetization) | Direct deals with licensed operators, or networks like Income Access / Catena Media | Reportedly the highest-earning model in this vertical, but requires partnering with properly licensed operators and clear disclosure — same compliance gate as advertising. |
 
 **Compliance flag**: displaying casino ratings, bonuses, or promotional content
 crosses into gambling-advertising territory in many jurisdictions (UK, several
@@ -318,20 +348,32 @@ examples hit all of these — revisit before automating):
       additional automated feeds (press releases, regulatory bulletins)
 - [ ] De-duplication / editorial review queue before `FEED` content publishes
 
-## Phase 7 — Subscription billing (gated on legal review)
+## Phase 7 — Monetization (gated on legal review)
 
-- [ ] Stripe integration: checkout, customer portal, webhook handling
-      (subscription created/renewed/canceled → update `User.tier`)
-- [ ] Server-side entitlement enforcement: any route/query serving
-      `ContentItem` where `tier = PAID` must check the requesting user's
-      `tier`, not just hide it client-side
-- [ ] Pricing/plan decision (single tier vs. multiple paid tiers) — not yet made
-- [ ] Optional, separate from the paywall: affiliate links (tracked outbound
+Advertising is the priority within this phase; paid billing is real but
+explicitly not urgent — see "Monetization" near the top of this document.
+
+- [ ] Pick and integrate a gambling-specific ad network (RichAds/Adsterra/
+      AdMaven/PropellerAds or similar) — ad placements on the homepage rails
+      and/or content pages, format TBD (avoid aggressive popunder/push formats
+      that clash with the editorial feel unless there's a clear reason to accept that)
+- [ ] Affiliate revenue-share deals with licensed operators (tracked outbound
       links, disclosure banners, per-partner reporting on `Bonus`/`Casino`) —
-      still undecided whether to pursue this at all
-- **Do not enable billing or affiliate links without confirming
-  gambling-advertising compliance requirements for the target jurisdictions
-  first** — see compliance flag above
+      pursue alongside or instead of ad-network placements; still undecided
+      which path(s) to prioritize
+- [ ] **(Lower priority)** Stripe integration: checkout, customer portal,
+      webhook handling (subscription created/renewed/canceled → update
+      `User.tier`) — only build once the free-account growth loop (video
+      filters → personalization → newsletter) is actually working
+- [ ] **(Lower priority)** Server-side entitlement enforcement: any route/
+      query serving `ContentItem` where `tier = PAID` must check the
+      requesting user's `tier`, not just hide it client-side
+- [ ] **(Lower priority)** Pricing/plan decision (single tier vs. multiple
+      paid tiers) — not yet made, not urgent
+- **Do not enable ad placements, affiliate links, or billing without
+  confirming gambling-advertising compliance requirements for the target
+  jurisdictions first** — see compliance flag above; this applies to
+  advertising exactly as much as it applied to the paywall
 
 ## Non-functional considerations throughout
 
