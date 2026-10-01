@@ -5,9 +5,8 @@ config are now renamed throughout. Two intentional exceptions: the seeded
 demo content's `slug` and the demo admin email `admin@casinowatch.local`
 stay as-is since both are upsert keys in `prisma/seed.ts` — renaming them
 would create duplicate rows rather than rename the existing ones, and
-neither is user-facing. The live Vercel URL, `casinowatch.vercel.app`, is
-also still pending — that's a Vercel dashboard change, not a code change,
-tracked in "Immediate next steps") is a newsletter-style site
+neither is user-facing. The Vercel project itself has been renamed and is
+live at `cloveredge.vercel.app`) is a newsletter-style site
 delivering customizable information about online and land-based casinos —
 news, bonuses, reviews, odds, and regulatory updates. The homepage works
 like MSN.com: a public, browsable, editorially curated dashboard that
@@ -43,10 +42,12 @@ failure.**
   the GitHub org and Vercel account — and credentials living in a shared
   vault (a password manager with sharing, e.g. 1Password or Bitwarden)
   rather than only in one person's local `.env` file or memory.
-- **Deployment.** Manual `vercel deploy --prod` only right now, no GitHub
-  auto-deploy connected — a missed manual step is a continuity gap.
-  Reconnecting Vercel's GitHub App so pushes to `main` deploy automatically
-  removes the dependency on someone remembering to run a command.
+- **Deployment.** **Done (2026-09-30)**: Vercel's GitHub App is connected
+  (Settings → Git shows `eschulke-labs/cloveredge`) — pushes to `main` now
+  deploy automatically, removing the dependency on someone remembering to
+  run `vercel deploy --prod` manually. See "Hosting & deployment" below for
+  the one-time catch-up note: commits pushed *before* the connection was
+  made don't retroactively trigger a deploy, only new pushes do.
 
 **Governance — every consequential action should be attributable,
 reversible, and access-controlled.**
@@ -446,14 +447,29 @@ for `www`, though Vercel's UI is the source of truth since exact values can
 change). Add those records in GoDaddy's DNS management for cloveredge.net.
 DNS propagation is usually fast but can take a few hours.
 
+**GitHub auto-deploy connected (decided: 2026-09-30)**: Vercel's GitHub App
+is now connected to `eschulke-labs/cloveredge` (Settings → Git), replacing
+the manual `vercel deploy --prod` workflow — this is the continuity fix
+flagged above under "Business continuity." One important mechanical detail
+worth documenting so it doesn't look like a bug again: **the connection
+only deploys commits pushed *after* it was established.** Vercel doesn't
+retroactively build history that already existed in the repo when the
+GitHub App was connected — so the batch of CloverEdge-rename commits that
+were pushed before the connection existed (README, `package.json`,
+`layout.tsx`, `schema.prisma`'s knowledge-graph additions, etc.) sat in
+GitHub but never triggered a deployment. The fix is simply pushing again
+(any new commit to `main`) — Vercel then builds from the current tip of
+`main`, which already includes everything already pushed. Going forward,
+every push to `main` deploys automatically with no manual step.
+
 ## Current state
 
-- **Live at [casinowatch.vercel.app](https://casinowatch.vercel.app)**
-  (pending rename — see "Immediate next steps"; will move to cloveredge.net
-  once that domain is connected) — deployed via Vercel CLI, manual
-  deploys only (GitHub auto-deploy-on-push isn't connected — Vercel's GitHub
-  App wasn't authorized for this account; `vercel deploy --prod` from the
-  repo root redeploys after any change)
+- **Live at [cloveredge.vercel.app](https://cloveredge.vercel.app)** (will
+  move to cloveredge.net once that custom domain is connected — see
+  "Hosting & deployment"). GitHub auto-deploy is now connected (see
+  "Hosting & deployment" below): pushes to `main` deploy automatically.
+  `vercel deploy --prod` from the repo root still works as a manual
+  fallback if ever needed.
 - Next.js 15 (App Router, TypeScript, Tailwind, ESLint)
 - Prisma 7 ORM, schema at [`prisma/schema.prisma`](prisma/schema.prisma), migrated
   and seeded against a live Postgres database
