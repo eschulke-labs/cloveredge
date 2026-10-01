@@ -462,6 +462,27 @@ GitHub but never triggered a deployment. The fix is simply pushing again
 `main`, which already includes everything already pushed. Going forward,
 every push to `main` deploys automatically with no manual step.
 
+**Update**: the "just push again" fix above turned out not to be enough —
+the first connection attempt never actually delivered any events at all
+(repo's Settings → Webhooks showed nothing, and a follow-up push still
+didn't trigger a build). The actual fix was disconnecting and reconnecting
+the Git repository in Vercel's project Settings → Git, which forces Vercel
+to redo its GitHub App authorization handshake rather than relying on
+whatever partial state the first connection left behind. If this ever
+recurs (e.g. after a repo transfer or rename), disconnect/reconnect is the
+first thing to try, before assuming it's a webhook-specific problem.
+
+With auto-deploy actually working, the first real build then failed on
+`Module not found: Can't resolve '@/generated/prisma/client'`. Root cause:
+`package.json`'s `build` script was just `next build`, with no step
+generating the Prisma client first. Locally this was masked because
+`prisma migrate dev` (run by hand during setup) generates the client as a
+side effect — but Vercel does a fresh `npm install` on every build with
+nothing pre-generated. Fixed by adding `"postinstall": "prisma generate"`
+to `package.json`, which Vercel runs automatically right after install,
+regardless of the npm `allowScripts` gating that blocks *dependencies'* own
+install scripts (that gate doesn't apply to the project's own scripts).
+
 ## Current state
 
 - **Live at [cloveredge.vercel.app](https://cloveredge.vercel.app)** (will
