@@ -66,10 +66,13 @@ async function main() {
 
   const contentItems = [
     {
+      // slug deliberately kept as "-casinowatch" (pre-rebrand) — upsert below
+      // is keyed on slug, so changing it would create a duplicate row instead
+      // of updating this one. Only the display text is renamed to CloverEdge.
       slug: "welcome-to-casinowatch",
-      title: "Welcome to CasinoWatch",
+      title: "Welcome to CloverEdge",
       excerpt: "What we cover and how personalization works.",
-      body: "CasinoWatch tracks online and land-based casino news, bonuses, and reviews. The homepage adapts to what you read — no account required.",
+      body: "CloverEdge tracks online and land-based casino news, bonuses, and reviews. The homepage adapts to what you read — no account required.",
       contentType: "NEWS" as const,
       tier: "FREE" as const,
       topics: ["online-casino-news"],
@@ -291,6 +294,10 @@ async function main() {
     });
   }
 
+  // "admin@casinowatch.local" kept as-is (pre-rebrand demo account, upsert
+  // keyed on email — renaming it would create a second demo admin rather
+  // than rename this one). It's an internal test identifier, never shown
+  // to visitors, so there's no user-facing CasinoWatch reference here.
   const adminUsers = ["admin@casinowatch.local", "eschulke@hotmail.com"];
   for (const email of adminUsers) {
     await prisma.user.upsert({

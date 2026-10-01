@@ -38,7 +38,7 @@ export default async function ContentPage({
   return (
     <main className="mx-auto max-w-2xl px-6 py-16">
       <Link href="/" className="text-sm text-gray-500 hover:underline">
-        &larr; Back to CasinoWatch
+        &larr; Back to CloverEdge
       </Link>
 
       {item.tier === "PAID" && (

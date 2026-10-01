@@ -54,7 +54,7 @@ export default async function VideosPage({
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
       <Link href="/" className="text-sm text-gray-500 hover:underline">
-        &larr; Back to CasinoWatch
+        &larr; Back to CloverEdge
       </Link>
 
       <h1 className="mt-2 text-3xl font-bold tracking-tight">Game & Casino Videos</h1>

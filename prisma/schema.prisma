@@ -1,4 +1,4 @@
-// CasinoWatch data model
+// CloverEdge data model
 // Design goal: content sourcing (manual CMS vs automated feeds) is left open —
 // see DEVELOPMENT_PLAN.md. Monetization is a subscription paywall: three access
 // tiers (anonymous visitor, free account, paid). Anonymous has no User record;
@@ -70,6 +70,9 @@ model User {
   issuesSent         NewsletterIssue[]
   comments           Comment[]
   isAdmin            Boolean             @default(false) // gates /admin — minimal role model for now
+  isContentReviewer  Boolean             @default(false) // gates the video review queue; isAdmin implies this too, doesn't replace it
+  reviewedVideos     VideoEmbed[]        // videos this user has reviewed/corrected — see DEVELOPMENT_PLAN.md human-in-the-loop section
+  auditLogActions    AuditLogEntry[]     // consequential actions this user has taken — see DEVELOPMENT_PLAN.md governance section
 
   // Auth.js (magic-link email sign-in) — standard adapter fields/relations.
   emailVerified DateTime?
@@ -289,13 +292,86 @@ enum VideoSentiment {
   UNKNOWN
 }
 
+// Broad bet-size tier — filterable, matches how players actually talk about
+// denomination, rather than forcing an exact amount out of every video.
+// See DEVELOPMENT_PLAN.md "Current priority" section for the buckets-vs-
+// exact-amount decision.
+enum Denomination {
+  PENNY      // roughly $0.01-$0.24
+  LOW        // roughly $0.25-$4.99
+  MID        // roughly $5-$24.99
+  HIGH_LIMIT // roughly $25+
+  UNKNOWN
+}
+
+// Human-in-the-loop review status for an AI-classified video. Videos
+// publish immediately on AI classification (decided — see
+// DEVELOPMENT_PLAN.md); this tracks whether a staff member has since
+// confirmed or corrected the tags, not whether the video is visible.
+enum VideoReviewState {
+  UNREVIEWED
+  VERIFIED
+  NEEDS_FIXING
+}
+
+// The company that manufactures/develops the game itself (Aristocrat, IGT,
+// Light & Wonder, etc.) — distinct from VideoEmbed.channelTitle, which is
+// who POSTED the video. Needed for RTP/volatility-driven recommendations,
+// not just video attribution. A video can reference a provider directly
+// (classifier identified the manufacturer but not the exact game) and/or
+// via its SlotGame once that's known.
+model GameProvider {
+  id    String     @id @default(cuid())
+  name  String     @unique
+  slug  String     @unique
+  games SlotGame[]
+  videos VideoEmbed[]
+}
+
+// A specific, named slot title (e.g. "Buffalo Gold," "Dragon Link") — pulled
+// forward from its original Phase 3 scope (ratings) because specific-game
+// search is now core to video discovery, not a ratings-only feature. rtp/
+// volatility stay nullable since they're populated by the Phase 3 rating
+// work, not required just to tag a video with which game it shows.
+// Slots-only scope for now (decided) — table-game variants are a separate,
+// less standardized kind of "specific game," deferred.
+model SlotGame {
+  id         String        @id @default(cuid())
+  name       String
+  slug       String        @unique
+  provider   GameProvider? @relation(fields: [providerId], references: [id])
+  providerId String?
+  rtp        Float?        // return-to-player %, when known (Phase 3)
+  volatility String?       // freeform ("low"/"medium"/"high") until a real rubric exists (Phase 3)
+  videos     VideoEmbed[]
+}
+
+// Generic audit trail for consequential admin/moderation actions — who did
+// what, when, to what. A governance/business-continuity foundation (see
+// DEVELOPMENT_PLAN.md "Business continuity & governance"): decisions and
+// changes need to be attributable and reconstructable without depending on
+// one person's memory. Deliberately generic (string action/entityType)
+// rather than one table per action type, so a new admin action doesn't need
+// a schema change just to get logged.
+model AuditLogEntry {
+  id         String   @id @default(cuid())
+  actor      User?    @relation(fields: [actorId], references: [id])
+  actorId    String?
+  action     String   // e.g. "video.review", "homepage.reorder", "comment.moderate"
+  entityType String   // e.g. "VideoEmbed", "HomepageModule", "Comment"
+  entityId   String
+  detail     Json?    // freeform before/after or context, when useful
+  createdAt  DateTime @default(now())
+}
+
 // A YouTube video pulled via the Data API (official metadata: title,
 // channel, duration, thumbnail, view count) plus gameType/venueType/
-// sentiment, which are NOT official API fields — they're filled in by the
-// classification process (title/description/tags/thumbnail review) since
-// YouTube doesn't expose structured "this is slots gameplay, a big win"
-// metadata itself. See DEVELOPMENT_PLAN.md Phase 4 for the classification
-// notes this was built from.
+// sentiment/slotGame/gameProvider/denomination, which are NOT official API
+// fields — they're filled in by the classification process (title/
+// description/tags/thumbnail review) since YouTube doesn't expose
+// structured "this is slots gameplay, a big win, on a $5 machine" metadata
+// itself. See DEVELOPMENT_PLAN.md Phase 4 / "Current priority" for the
+// classification notes and build sequence this was built from.
 model VideoEmbed {
   id                 String         @id @default(cuid())
   youtubeVideoId     String         @unique
@@ -310,4 +386,25 @@ model VideoEmbed {
   youtubePublishedAt DateTime?
   fetchedAt          DateTime       @default(now())
   content            ContentItem?
+
+  // Specific-game + provider identification (nullable — not every video
+  // will be confidently classified to an exact game/provider, especially
+  // early in the AI pipeline's tiering).
+  slotGame       SlotGame?     @relation(fields: [slotGameId], references: [id])
+  slotGameId     String?
+  gameProvider   GameProvider? @relation(fields: [gameProviderId], references: [id])
+  gameProviderId String?
+
+  // Denomination/bet size — bucketed for filtering, exact value stored
+  // alongside when a creator states one.
+  denomination      Denomination @default(UNKNOWN)
+  denominationExact Float?
+
+  // Human-in-the-loop review state (publish-then-review, decided).
+  reviewState     VideoReviewState @default(UNREVIEWED)
+  reviewedBy      User?            @relation(fields: [reviewedById], references: [id])
+  reviewedById    String?
+  reviewedAt      DateTime?
+  confidenceScore Float?           // 0-1, from the AI classification call
+  staffNotes      String?          // internal only, never rendered to visitors
 }

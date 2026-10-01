@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Casino Watch",
+  title: "CloverEdge",
   description:
     "A customizable newsletter covering online and land-based casino news, bonuses, and reviews.",
 };

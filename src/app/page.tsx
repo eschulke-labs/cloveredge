@@ -86,7 +86,7 @@ export default async function Home() {
 
       <footer className="mx-auto max-w-3xl px-6 pb-12 text-xs text-gray-500">
         <p>
-          Must be of legal gambling age in your jurisdiction. CasinoWatch
+          Must be of legal gambling age in your jurisdiction. CloverEdge
           provides news and information only — it does not offer real-money
           gambling. If gambling is causing you harm, resources are available
           at{" "}
