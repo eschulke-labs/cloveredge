@@ -417,6 +417,35 @@ promotional or affiliate content goes live — it's out of scope for this
 document to resolve, but it should gate Phase 5 (Monetization), not just be a
 footnote.
 
+## Hosting & deployment (added 2026-09-30)
+
+**Why Vercel runs the application**: Vercel is the company that builds
+Next.js (this project's framework), so it runs this kind of app with no
+extra server configuration — server components, API routes, image
+optimization, and preview deployments all work out of the box. It's free
+at this project's current scale (Hobby plan under the `eschulke-labs`
+team), and it's simply what was already in place from the project's first
+deployment. Not a permanent lock-in — Netlify, Railway, Render, and
+Cloudflare Pages are the usual alternatives for a Next.js app if cost or a
+specific feature ever justifies switching — but there's no reason to
+revisit it now.
+
+**Why the domain registrar (GoDaddy) is separate from hosting**: these are
+two different jobs. GoDaddy (where `cloveredge.net` is registered) is the
+domain's phone-book entry — it points the name at wherever the site
+actually runs. Vercel is where the site actually runs — the real
+application code and its database connection. GoDaddy's own hosting plans
+are built for simple static/WordPress sites, not a Next.js app with a
+database, so there's no reason to host there — the domain stays registered
+at GoDaddy, DNS records there just point to Vercel.
+
+**Connecting cloveredge.net (in progress)**: add the domain in the Vercel
+project (Settings → Domains → Add); Vercel then displays the exact DNS
+records to create (typically an A record for the root domain and a CNAME
+for `www`, though Vercel's UI is the source of truth since exact values can
+change). Add those records in GoDaddy's DNS management for cloveredge.net.
+DNS propagation is usually fast but can take a few hours.
+
 ## Current state
 
 - **Live at [casinowatch.vercel.app](https://casinowatch.vercel.app)**
