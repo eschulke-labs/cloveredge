@@ -14,7 +14,7 @@ anyone can see without an account, with personalization layered on top for
 both anonymous visitors and signed-in users.
 
 **The name**: Clover is luck; Edge is the advantage the AI-built knowledge
-graph (see "Current priority" below) gives a player — deliberately doubling
+graph (see "Knowledge graph v1" below) gives a player — deliberately doubling
 as the literal graph *edges* connecting videos, games, creators, and
 providers together.
 
@@ -53,7 +53,7 @@ failure.**
 reversible, and access-controlled.**
 
 - **Access control.** The `isAdmin`/`isContentReviewer` role split (see
-  "Human-in-the-loop," below) is the first real piece of this —
+  "Decided earlier and still in force," below) is the first real piece of this —
   least-privilege by default, not everyone getting full admin access.
 - **Audit trail.** `AuditLogEntry` (see Data model summary) exists
   specifically for this: who did what, when, to what — generic enough to
@@ -91,253 +91,306 @@ implications going forward:
   doesn't get allowed to drift out of sync with what's actually built, the
   same discipline "Current state" (below) already follows.
 
-## Completed: basic video filtering (Phase 4 foundation) — done
+## Where we actually are (reset: 2026-11-22)
 
-Everything else in this document — ratings (Phase 3), prediction markets and
-creator promotion (rest of Phase 4), newsletter delivery (Phase 5), feed
-sourcing at scale (Phase 6), billing (Phase 7) — is real, scoped, and staying
-in the plan, but is now explicitly **secondary**. It gets built over time.
-The thing being built right now is: **letting people tell CloverEdge what
-videos they want to see.**
+Honest status, from Edward: **we are at the very beginning.** What exists is
+a working skeleton — a homepage, auth, a `/videos` filter page over 5
+hand-seeded slot videos, and schema stubs for games/providers that hold no
+data. Nothing collects videos on its own, nothing "watches" them, and the
+knowledge graph doesn't exist yet. Everything below this section (Phases
+3-7) is still real, but it is **parked** until the near-term plan here is
+running.
 
-The video rail and the real slot-play videos in it (Phase 4) are the
-foundation this sits on. What's missing is user input — right now the rail
-shows the same fixed set to everyone. The feature:
+**The goal for "running soon"**: a loop that works end to end, even at small
+scale —
 
-1. **On-page filters, no account required** — filter chips above the video
-   rail (and eventually its own `/videos` page once there's enough volume to
-   justify one) for the dimensions `VideoEmbed` already has: game type
-   (Slots/Blackjack/Roulette/Poker/Sports Betting), venue (Online/Land-Based),
-   and a sort (Newest/Most Viewed). Implemented as URL search params
-   (`?gameType=SLOTS`) rather than client-only state, so a filtered view is
-   shareable/bookmarkable and stays consistent with how the rest of the site
-   is server-rendered.
-2. **Saved preference for signed-in users (later, not blocking)** — remember
-   a user's last-used filter as their default view, and eventually feed the
-   same filter dimensions into the Phase 5 newsletter digest so the emailed
-   video picks match what someone actually filters for on-site.
-3. Since only slots are populated right now, most filter combinations will
-   return an empty state — that's expected and fine (clear "no blackjack
-   videos yet" messaging beats hiding the option).
+1. **Collect** — add YouTube casino videos (one URL at a time at first, then
+   from a watchlist of channels).
+2. **Watch** — an AI pass reads each video's title/description/tags and
+   looks at frames from it, and writes structured facts.
+3. **Record** — the facts land in the knowledge graph: which game(s) were
+   played, bet amount, whether there was a win, how big, where it was
+   recorded, and when.
+4. **Review** — staff (Edward, to start) confirm or fix what the AI wrote;
+   every fix is kept to make the next pass better.
+5. **Show** — the public site lets people browse and filter by any of those
+   facts, in a design that looks modern and premium.
 
-- [x] Filter chips UI — built as a dedicated `/videos` page
-      ([`src/app/videos/page.tsx`](src/app/videos/page.tsx)) rather than
-      cramming chips into the homepage rail's 4-item preview, since this is
-      the first main feature and deserves its own page. The homepage rail
-      now links out via "Filter & see all →" ([`src/components/Rail.tsx`](src/components/Rail.tsx))
-- [x] Server-side filtering via URL search params
-      ([`src/lib/videos.ts`](src/lib/videos.ts): `getVideos({ gameType, venueType, sort })`),
-      no client JS — filter chips are plain links, so `/videos?gameType=SLOTS`
-      is shareable/bookmarkable. Verified: filtering to `BLACKJACK` (no data
-      yet) shows the empty state; `SLOTS` + `sort=popular` returns all 5
-      real videos correctly ordered by view count (15,548 → 6,096 → 1,614 →
-      887 → 350)
-- [x] Empty-state messaging per filter combination — verified live
-- [ ] (Later) persist a signed-in user's preferred filter as their default
-- [ ] (Later) wire the same filter dimensions into the Phase 5 digest
+### What "watching" a video means, technically (decided: 2026-11-22)
 
-## Current priority: AI-powered video discovery — filter by creator, game, and denomination (building now)
+Claude (the AI model) **does not take video files as input — it reads text
+and still images.** So "watching" a video means: give the model the
+title/description/tags *plus a set of frames from the video*, and ask it to
+fill in a fixed schema. That works well for this content because the facts
+we want are mostly **visible on screen**: the game's logo/title art, the
+bet meter, the win meter, the credit meter, a handpay screen, casino carpet
+and signage.
 
-**The core product insight** (from Edward, 2026-09-30): there's a large volume
-of casino gameplay video on YouTube — from established gambling content
-creators and regular people recording their own sessions — but YouTube's own
-search and filtering can't answer the question a viewer actually has: "show
-me videos of *this specific slot* at *this bet size* from *this creator*."
-Cloveredge's value isn't hosting new video, it's making video that already
-exists on YouTube findable along the dimensions casino players actually think
-in, which YouTube doesn't support natively.
+The constraint is **where the frames come from**:
 
-This extends the basic filtering above (gameType/venueType/sort) with three
-more specific dimensions:
+- **YouTube thumbnails** (official, allowed): one creator-chosen image plus
+  a few auto-generated stills per video. Free and allowed, but limited —
+  often a "BIG WIN!!" thumbnail with a reaction face, not the meters.
+- **Downloading the YouTube video to pull frames** (e.g. with `yt-dlp`):
+  technically easy, but **against YouTube's Terms of Service**, same reason
+  transcript scraping was ruled out in Phase 4. Not doing this without an
+  explicit decision to accept that risk.
+- **Footage the creator gives us** (upload, shared Drive link, or a
+  creator's written permission): fully allowed, full-quality frames, and it
+  fits the planned Creator Promotion program (Phase 4). Slower to get.
 
-1. **Creator/channel** — `VideoEmbed.channelTitle` already exists as a flat
-   string; filtering by it just needs a UI control, but see the open
-   question below on whether it should become a proper relation shared with
-   the Phase 4 `CreatorProfile` (creator promotion) concept rather than
-   staying a disconnected string.
-2. **Specific game** — not just `VideoGameType` (SLOTS/BLACKJACK/etc.) but
-   the actual game title (e.g. "Buffalo Gold," "Dragon Link"). This is
-   exactly what Phase 3's deferred `SlotGame` model was for — this direction
-   pulls it forward and links it directly to `VideoEmbed`, since
-   specific-game search is now core to the product, not a ratings feature.
-3. **Denomination** — bet size/stake level (e.g. penny, $1, $5, high-limit).
-   Entirely new; nothing in the current schema captures this.
+**Plan**: v1 runs on text + thumbnails so the loop is live immediately.
+Creator-provided footage is the path to full frame-by-frame "watching" and
+gets pursued in parallel. **Open decision for Edward**: whether any other
+frame source (e.g. a video-understanding API that is licensed to read
+YouTube URLs directly) is worth evaluating — to be checked against current
+terms when we get there, not assumed.
 
-**Proposed approach: extend the existing Prisma/Postgres schema, not a
-separate graph database.** "Knowledge graph" here means richly-linked
-structured entities (Video ↔ Game ↔ Creator ↔ Denomination, eventually ↔
-Casino/venue) supporting multi-dimensional filtering and "show me more like
-this" queries — Postgres with proper relations delivers that without a
-second database technology. Flagged as an open question below in case
-there's a specific reason to want dedicated graph-database tech instead
-(e.g. visualizing the graph itself, or multi-hop traversal at a scale
-relational joins won't handle well).
+**Model**: Claude Opus 5.5 (`claude-opus-5-5`) for extraction, using
+structured outputs so every response matches the schema exactly. Revisit a
+cheaper model only after there's a measured accuracy baseline (below).
 
-**AI extraction pipeline (extends the Phase 4 classification approach)**:
-the existing plan already called for "an LLM call per video given
-title/description/tags/thumbnail" to fill in `gameType`/`venueType`/
-`sentiment` — this extends naturally to also extract game title,
-denomination, and (already free from the API) creator. Proposed
-tiering, cheapest first:
+**The first ~50 videos get tagged by hand, with Claude Code's help, in this
+repo.** That's the fastest way to start the graph *and* it produces a
+checked "gold" set — the yardstick the automated pipeline is measured
+against before it's trusted to run unattended.
 
-1. **Text pass** — many creators in this niche state the game and bet size
-   directly in the title/description (e.g. "$50 SPINS on Buffalo Gold!!");
-   an LLM call over title+description+tags likely resolves a large share of
-   videos with no image analysis at all.
-2. **Thumbnail vision pass** — fallback when text is silent or ambiguous;
-   already validated by the Phase 4 research (a thumbnail alone correctly
-   identified a blackjack table, chip stack, and streamer reaction on an
-   untagged clip).
-3. **(Stretch, not started) full video-frame sampling** — for cases where
-   neither text nor thumbnail reveals the game/denomination. Meaningfully
-   more expensive/complex than the other two tiers; worth deferring until we
-   know how often tiers 1-2 fall short in practice.
+## Knowledge graph v1 — the starting design (approved by Edward: 2026-11-22)
 
-### Open questions — need input before the schema/pipeline gets built
+**Principle**: start with a small set of well-defined *things* (nodes) and
+*relationships* (edges), store every fact with where it came from, and grow
+by adding new node types — never by cramming more meaning into existing
+columns. It stays in Postgres (Prisma); no separate graph database until
+there's a concrete query we can't answer with joins (re-evaluated at that
+point — the Postgres extension Apache AGE is the low-effort option if it
+comes to that).
 
-- **"Content provider" — which did you mean?** The YouTube creator/channel
-  who posted the video (working assumption, since `channelTitle` already
-  exists for this), the casino/venue shown in the footage, or the slot
-  game's manufacturer (industry term "provider" usually means the game
-  studio, e.g. Aristocrat/IGT/Light & Wonder — distinct from "creator")?
-  This decides which entity gets modeled first.
-- **Denomination — buckets or exact amounts?** Broad tiers (penny / $1-4 /
-  $5-24 / high-limit $25+) are simpler to filter by and match how players
-  actually talk about it, versus storing the literal bet amount whenever a
-  creator states one (could also keep both — bucket for filtering, exact
-  value alongside it).
-- **Scope of "specific games" — slots only, or table games too?** Current
-  content is 100% slots, and the deferred `SlotGame` model was slots-only.
-  Table-game *variants* (e.g. a particular blackjack ruleset) are a
-  different, less standardized kind of "specific game" — decide now whether
-  to design for both from day one or go slots-first.
-- **Graph database, or extend Postgres?** Default recommendation above is
-  extending the existing Prisma schema — flag it if there's a specific
-  reason to want dedicated graph-database technology instead.
-- **How reliable is text (title/description) for game name and denomination
-  in this content?** Determines how much of the pipeline can be cheap
-  text-only extraction versus needing thumbnail/frame analysis for most
-  videos.
+### Nodes (the things)
 
-**Working assumptions, proceeding unless corrected**: denomination is
-captured as broad buckets (penny / $1-4 / $5-24 / high-limit $25+) with the
-exact amount stored alongside when a creator states one; "specific games"
-scope starts slots-only, matching current content; the knowledge graph is
-built by extending the existing Prisma/Postgres schema rather than adopting
-a separate graph database.
+| Node | What it is | Key fields | Notes |
+|---|---|---|---|
+| **Video** | A YouTube video | youtubeId, title, description, publishedAt, duration, views, thumbnail | Replaces/extends today's `VideoEmbed` |
+| **Creator** | The YouTube channel that posted it | youtubeChannelId, name, handle | Today this is just a text column (`channelTitle`); becomes its own node so we can show "all of this creator's videos" and later run the Creator Promotion program |
+| **Game** | A specific game title — "Dragon Link: Golden Century", "Buffalo Gold" | name, gameType (SLOTS / BLACKJACK / …), provider, RTP, volatility | Rename of the empty `SlotGame` stub, widened so table games fit later without a new model. Slots first in practice |
+| **GameProvider** | The manufacturer — Aristocrat, IGT, Light & Wonder | name | Already in schema, empty |
+| **Venue** | Where it was played — a physical casino, or an online casino site | name, type (LAND_BASED / ONLINE), city, state, country | The existing `Casino` model, plus location fields |
 
-### Extends into: personalized recommendations + reviews (new — ties Phase 3 together)
+### Edges (the relationships), carrying the facts you asked for
 
-**Second primary use case** (from Edward, 2026-09-30): beyond finding
-videos, a user planning a casino visit wants recommendations on *which
-games to play there* and *how to play them* — generated from the knowledge
-graph this feature builds, not hand-written editorial content. This
-retroactively explains why the Phase 3 `Comment`/review feature (signed-in
-users reviewing their own casino experience, schema already built) matters
-more than originally scoped: user-submitted reviews become a second input
-signal for recommendations, alongside video-derived data, not just social
-proof on a casino profile page.
+| Edge | Connects | Facts on it | Answers |
+|---|---|---|---|
+| **posted by** | Video → Creator | — | "who made this" |
+| **recorded at** | Video → Venue | confidence | **where** |
+| **recorded on** | Video (field) | date + precision (exact day / month / year / unknown; publish date used only as a labeled fallback) | **when** |
+| **Play** | Video → Game | start/end time in the video, **bet amount**, denomination bucket (penny / $1-4 / $5-24 / $25+), currency | **which game(s)** and **how much** — one video can have several Plays, which today's schema can't represent |
+| **Win** | Play → (event) | time in video, win amount, bet at the time, **multiplier** (win ÷ bet), kind (line win / bonus / free spins / progressive / jackpot / handpay), size bucket | **was there a win, how big** |
 
-This also resolves the "content provider" open question above as likely
-**both** meanings at once, serving different purposes: the **creator**
-(`channelTitle`, who posted the video — attribution/filtering) and the
-**game provider/manufacturer** (Aristocrat, IGT, Light & Wonder, etc. — the
-source of RTP/volatility data, which is exactly what Phase 3's deferred
-`SlotGame` model was scoped to hold). A recommendation like "play this game
-at this bet size" needs the provider's RTP data as much as it needs the
-video evidence.
+Video-level summaries — "net result: WIN / LOSS / BREAK-EVEN / UNKNOWN",
+"biggest win $", "biggest multiplier" — are **computed from the Plays and
+Wins**, not typed in separately, so they can't disagree with the details.
 
-**Open questions on the recommendation mechanic specifically:**
+**Win size buckets** (by multiplier, so a $50 win on a $0.50 bet ranks
+above a $200 win on a $25 bet — the way players judge wins): under 10× =
+small, 10-49× = nice, 50-99× = big, 100-499× = huge, 500×+ = epic; a
+handpay or progressive jackpot is flagged separately regardless of
+multiplier.
 
-- Is a recommendation scoped **to a specific casino** the user names (e.g.
-  "I'm going to Caesars Palace with $200 — what should I play?", requiring
-  we know which games a given venue actually offers), or **casino-agnostic**
-  (recommend by game/style/budget without tying to a specific property)?
-  The former needs a `Casino` ↔ `SlotGame`/game-availability relation that
-  doesn't exist yet.
-- Does "how they should play" mean **bankroll/betting strategy** (bet
-  sizing, session length, budget pacing), **game mechanics/rules**
-  explanation, or both?
+**Credits vs dollars**: slot meters often show *credits*, not dollars.
+Every amount is stored in dollars only when the denomination is known;
+otherwise it's stored as credits with the denomination marked unknown —
+never silently guessed.
 
-### Human-in-the-loop: staff review, correction, and teaching the classifier (new)
+### Provenance — what makes the graph trustworthy and teachable
 
-**Decided direction** (from Edward, 2026-09-30): AI classification doesn't
-run unsupervised. Staff review AI-generated tags, correct them, add their
-own commentary, and that correction activity is what improves future
-classification — not a one-time model build. This tracks with the Phase 4
-research already in this doc, which surfaced real, unresolved edge cases
-(unreliable creator tags, title/tag disagreement, ambiguous sentiment) that
-a human clearly needs to arbitrate, at least until there's a large corrected
-dataset to lean on.
+Every Play, Win, venue link and date carries:
 
-Proposed shape, extending the existing `/admin` pattern (`/admin/homepage`
-already does editorial Server Actions gated on `User.isAdmin`):
+- **source** — `AI`, `HUMAN`, or `YOUTUBE_API`
+- **confidence** — 0-1 from the AI pass
+- **extractionRunId** → an **ExtractionRun** record: model used, prompt
+  version, which inputs it saw (text only / thumbnails / frames), the raw
+  JSON it returned, and cost
 
-- **Review status per video** — `VideoEmbed` gets a review-state field
-  (e.g. `UNREVIEWED` / `VERIFIED` / `NEEDS_FIXING`) plus `reviewedById` /
-  `reviewedAt`, so staff have an actual queue instead of re-checking
-  everything. AI-filled fields (`gameType`, provider, denomination,
-  `sentiment`) stay editable by staff after the fact — same fields, human
-  edits just overwrite/confirm the AI's guess.
-- **Confidence score from the classification call** — captured alongside
-  the AI's tag guesses so the review queue can surface low-confidence /
-  disagreement cases first, rather than making staff review every video
-  equally (which won't scale past a small catalog).
-- **Staff commentary** — a notes field distinct from user-facing content
-  (internal only), for context a reviewer wants to leave (e.g. "title says
-  $5 but footage looks like a $1 machine — flagged, not corrected").
-- **Teaching the classifier**: start simple — every human correction
-  becomes a stored (AI guess → corrected value) example, and a curated set
-  of these gets fed back into the classification prompt as few-shot
-  examples, so the model sees real corrected cases from this exact content
-  domain. Revisit actual fine-tuning only once there's enough corrected
-  volume to justify it — same "prove the model with real usage before
-  investing further" pattern this doc already applies elsewhere (e.g.
-  content sourcing, ad network choice).
+A human correction doesn't overwrite the AI's row — it adds a `HUMAN` row
+that wins. That keeps the "AI guessed X, human said Y" pairs that the
+teach-the-classifier loop (below) needs, and lets the whole graph be
+re-run with a better model/prompt and compared, because the raw output is
+kept.
 
-**Decided** (Edward, 2026-09-30):
+### Aliases — so the same thing isn't recorded five ways
 
-- **Reviewers get their own role, separate from full admin.** Add
-  `User.isContentReviewer` (additive, alongside the existing `isAdmin` —
-  admins implicitly get reviewer access too) rather than overloading
-  `isAdmin` for this. Keeps the video review queue open to staff who
-  shouldn't also get site-config/`/admin/homepage` access.
-- **Publish-then-review.** AI-tagged videos go live the moment they're
-  classified; staff correct mistakes afterward via the review queue rather
-  than gating publish on human confirmation. Prioritizes a fresh-feeling
-  catalog over zero-mistake tagging — the confidence score + review queue
-  is how mistakes get caught, not a pre-publish gate.
+An **Alias** table maps names as creators actually write them to the one
+real node: "Cosmo" / "The Cosmo" → *The Cosmopolitan of Las Vegas*;
+"DL Golden Century" → *Dragon Link: Golden Century*. Matching new videos
+against aliases is how the graph stays connected instead of fragmenting.
 
-### Build sequence — many small phases, not one big build (decided: 2026-09-30)
+### How it grows (later node types, no redesign needed)
 
-Edward's explicit direction: all of the above (discovery, recommendations,
-human-in-the-loop) is real and staying in the plan, but it ships as a
-sequence of small, shippable increments as the site evolves — not one big
-build. Proposed order, each step usable/demoable on its own:
+- **Feature/Mechanic** (Hold & Spin, Cash on Reels, Must-Hit-By) and
+  **Theme** — linked to Game; powers "games like this one."
+- **Jurisdiction** — linked to Venue; powers compliance filtering.
+- **User** edges — watched / saved / reviewed — powers personalization and
+  the recommendation engine.
+- **Session** grouping (several Plays in one casino trip) if creators'
+  multi-game vlogs make that useful.
 
-1. **Data model foundation (next up)** — add a specific-game relation to
-   `VideoEmbed` (pulling `SlotGame` forward from Phase 3, slots-only
-   scope), a denomination field (bucket enum + optional exact value), a
-   `GameProvider` entity (manufacturer, separate from `channelTitle`), the
-   review-state fields (`reviewState`, `reviewedById`, `reviewedAt`,
-   `confidenceScore`, `staffNotes`), and `User.isContentReviewer`.
-2. **AI classification pipeline v1** — text-only tier (title/description/
-   tags) filling gameType/provider-guess/denomination-guess/game-title-guess
-   + a confidence score. Videos publish immediately per the decision above.
-   No image analysis yet.
-3. **Staff review queue UI** — `/admin/videos`-style page, gated on
-   `isContentReviewer || isAdmin`, sorted lowest-confidence-first; staff
-   edit tags, mark verified/needs-fixing, leave notes.
-4. **Thumbnail vision fallback tier** — re-run low-confidence text-pass
-   results through thumbnail image analysis.
-5. **Teach-the-classifier loop** — store (AI guess → human correction)
-   pairs from step 3's corrections, feed a curated set back into the steps
-   2/4 prompts as few-shot examples from this exact content domain.
-6. **Recommendation engine v1** — gated on answering the two open
-   questions above (casino-specific vs. casino-agnostic; betting-strategy
-   vs. mechanics explanation, or both) before this gets scoped further.
-7. **(Stretch) full video-frame sampling tier** — only if steps 2 and 4
-   still leave too many videos unresolved in practice.
+### What happens to today's schema
+
+`SlotGame` and `GameProvider` hold no data, so reshaping them is free. On
+`VideoEmbed`, the single-game fields (`slotGameId`, `denomination`,
+`denominationExact`, `sentiment`) move onto Play/Win; `channelTitle`
+becomes a link to Creator; the review fields stay. The 5 existing videos
+get re-tagged into the new shape as part of the gold set.
+
+**⚠ Before this migration runs**: production and local dev share one
+database (see "Current state"). A schema migration run locally changes the
+live site instantly. **Split dev/prod databases first** (Milestone 0).
+
+## Two sites: the public site and the Studio (decided: 2026-11-22)
+
+Edward's direction: two separate sites —
+
+1. **CloverEdge (public)** — `cloveredge.net`. For commercial users: search
+   and browse the knowledge graph (games, creators, casinos, wins), find
+   videos, and **watch them on our site**.
+2. **CloverEdge Studio (internal)** — `studio.cloveredge.net`. The
+   maintenance and site-admin site. Sign-in required; nobody else can
+   reach it. Two areas:
+   - **Knowledge graph** (`isContentReviewer` or `isAdmin`): add videos and
+     creator channels, run and review the AI "watch" pass, correct facts,
+     merge aliases, manage creators/games/providers/venues.
+   - **Site admin** (`isAdmin` only): homepage layout and rails, Top Story
+     carousel, Trending Now pins, editorial content, users and their roles,
+     comment moderation, and the audit log of who changed what.
+
+**How it's built: one codebase, two front doors.** Both sites live in this
+one Next.js project and share the same database and schema code, but have
+completely separate layouts, navigation and look. `src/proxy.ts` sends
+requests for `studio.` to the Studio pages and blocks Studio pages on the
+public domain. Why not two separate projects: they read and write the same
+knowledge graph, so two copies of the schema and data code would drift
+apart; one project is one deploy and one place to fix things. If the two
+ever need different teams or release schedules, it splits cleanly into
+two apps sharing a package — not needed now.
+
+The existing `/admin/homepage` page moves into the Studio.
+
+**Watching on our site**: videos play through YouTube's official embedded
+player (an `<iframe>` from `youtube-nocookie.com`). That is explicitly
+allowed by YouTube's terms, needs no download, and the creator still gets
+the view and ad revenue — which matters for the Creator Promotion
+relationship. Our page wraps the player with the graph facts: jump-to-win
+timestamps (the player can start at a given second), game and venue links,
+"more videos of this game."
+
+## Near-term roadmap — small milestones, each usable on its own (decided: 2026-11-22)
+
+Replaces the earlier 7-step "Build sequence" (same ideas, re-ordered so the
+collect → watch → record loop runs first).
+
+**Milestone 0 — Foundations (now)**
+- [x] Design system installed: **shadcn/ui** (component library built on
+      Tailwind, which the site already uses) + **Motion** (animation) +
+      **Lucide** (icons) + **Sonner** (toast notifications). See "Design
+      system" below. Installing it changes nothing visible yet — the
+      redesign is Milestone 5.
+- [x] Separate dev and production databases — done 2026-11-22. Production
+      is on **Neon** (via the Vercel integration, env prefix `NEON_`;
+      production `DATABASE_URL` = Neon's *pooled* URL). Local dev uses the
+      old Prisma Postgres instance (`DATABASE_URL` in `.env.local`). All
+      data copied with row counts verified. See "Current state" for what
+      this also fixed.
+- [x] Point `cloveredge.net` (GoDaddy) at the Vercel site — done
+      2026-11-22, see "Hosting & deployment."
+- [ ] `ANTHROPIC_API_KEY` added locally and on Vercel.
+
+**Milestone 1 — Knowledge graph schema v1**
+- [ ] Prisma migration implementing the nodes/edges/provenance above.
+- [ ] Re-seed the 5 existing videos into the new shape.
+
+**Milestone 2 — Collect videos**
+- [ ] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
+      Studio layout, reviewer/admin sign-in gate; move `/admin/homepage` in.
+- [ ] Studio "Add video" form: paste a YouTube URL → fetch official metadata
+      (`videos.list`, 1 quota unit) → create Video + Creator.
+- [ ] Channel watchlist: admin adds creator channels; a scheduled job
+      (Vercel Cron) checks them for new uploads using cheap API calls (per
+      the quota rule in "Resources").
+- [ ] Hand-tag the first ~50 videos with Claude Code → the gold set.
+
+**Milestone 3 — "Watch" pipeline v1**
+- [ ] For each new video: one Claude call over title/description/tags +
+      thumbnails → Plays, Wins, venue, date, each with confidence; saved
+      with an ExtractionRun.
+- [ ] Videos publish immediately (publish-then-review, decided 2026-09-30).
+- [ ] Measure the pipeline against the gold set: accuracy per field (game,
+      bet, win amount, venue, date). This number decides what to improve
+      next.
+
+**Milestone 4 — Review queue**
+- [ ] Studio review queue: lowest-confidence first, side-by-side AI guess vs
+      editable fields, mark Verified / Needs fixing, internal notes.
+      Gated on `isContentReviewer || isAdmin`.
+- [ ] Each correction stored as an (AI guess → human value) pair; a curated
+      set of them is added to the extraction prompt as examples.
+- [ ] Every review action writes an `AuditLogEntry`.
+
+**Milestone 5 — Public discovery + redesign**
+- [ ] Redesign homepage, `/videos`, and new pages on the design system.
+- [ ] Video watch page: embedded YouTube player + the graph facts around
+      it, jump-to-win timestamps, related videos.
+- [ ] Knowledge-graph search: one search box across games, creators,
+      casinos and videos.
+- [ ] Pages per node: `/games/[slug]`, `/creators/[slug]`,
+      `/casinos/[slug]` — each listing connected videos and stats (e.g.
+      "biggest wins on Dragon Link this month").
+- [ ] Filters on `/videos`: game, provider, creator, venue, bet range, win
+      size, recorded date.
+
+**Milestone 6 — Better watching**
+- [ ] Creator-provided footage → real frame sampling (every N seconds +
+      around win moments).
+- [ ] Recommendation engine v1 — still blocked on the two open questions
+      below.
+
+### Design system (decided: 2026-11-22)
+
+Edward's direction: the site should look modern and sophisticated, which it
+doesn't today. Chosen stack:
+
+- **shadcn/ui** — not a package you depend on but a set of
+  well-designed, accessible components (cards, dialogs, tabs, menus) copied
+  into `src/components/ui/` so they can be restyled freely. It's the
+  most widely used React component system today and is built on Tailwind
+  (already in the project), so nothing gets thrown away. Config:
+  `components.json`; theme colors are CSS variables in
+  `src/app/globals.css`.
+- **Motion** (formerly Framer Motion) — smooth animation: card hovers, page
+  transitions, carousel motion, win-counter count-ups.
+- **Lucide** — consistent icon set.
+- **Sonner** — toast notifications (e.g. "Subscribed!").
+
+Still to decide in Milestone 5: the visual direction itself (e.g. dark
+"premium casino" look with gold/emerald accents vs. a light editorial
+look), typography, and a CloverEdge color palette to replace the shadcn
+default grays.
+
+### Still-open questions (carried over from 2026-09-30)
+
+- Recommendations: tied to a specific casino the user names, or
+  casino-agnostic?
+- "How to play": bankroll/betting strategy, game rules, or both?
+
+### Decided earlier and still in force (2026-09-30)
+
+- Reviewers get their own role (`User.isContentReviewer`), separate from
+  full admin.
+- Publish-then-review: AI-tagged videos go live immediately; the review
+  queue catches mistakes.
+- Denomination stored as a bucket plus exact amount when known.
+- "Content provider" means both the creator (who posted) and the game
+  provider (manufacturer) — both are nodes above.
+- `/videos` filter page (game type / venue / sort via URL parameters) is
+  built and live.
 
 ## Monetization: advertising is primary, paid tier is not a growth priority (decided)
 
@@ -440,7 +493,12 @@ are built for simple static/WordPress sites, not a Next.js app with a
 database, so there's no reason to host there — the domain stays registered
 at GoDaddy, DNS records there just point to Vercel.
 
-**Connecting cloveredge.net (in progress)**: add the domain in the Vercel
+**Connecting cloveredge.net (done 2026-11-22)**: GoDaddy DNS has an A
+record `@` → `216.198.79.1` and a CNAME `www`; both `cloveredge.net` and
+`www.cloveredge.net` are added in Vercel, with `www` as the primary address.
+Gotcha hit along the way: DNS pointing at Vercel isn't enough — Vercel only
+issues an HTTPS certificate for names added to the project, so `www` showed
+a certificate error until it was added there too. Original steps: add the domain in the Vercel
 project (Settings → Domains → Add); Vercel then displays the exact DNS
 records to create (typically an A record for the root domain and a CNAME
 for `www`, though Vercel's UI is the source of truth since exact values can
@@ -483,74 +541,90 @@ to `package.json`, which Vercel runs automatically right after install,
 regardless of the npm `allowScripts` gating that blocks *dependencies'* own
 install scripts (that gate doesn't apply to the project's own scripts).
 
+
+**Using GoDaddy for hosting too? No — decided 2026-11-22.** Edward asked
+whether GoDaddy, where `cloveredge.net` was bought, could also host the
+site. GoDaddy's hosting is built for WordPress/static sites and can't run
+this app (server-rendered Next.js pages, sign-in, a database, scheduled
+jobs) without moving to a GoDaddy VPS that we'd have to run and patch
+ourselves. So: the **domain stays registered at GoDaddy**, and GoDaddy's
+DNS settings point it at Vercel. Steps: in Vercel → project → Settings →
+Domains, add `cloveredge.net`, `www.cloveredge.net` and
+`studio.cloveredge.net`; Vercel shows the exact DNS records; enter those in
+GoDaddy → My Products → cloveredge.net → DNS. HTTPS certificates are issued
+automatically by Vercel.
+
 ## Current state
 
-- **Live at [cloveredge.vercel.app](https://cloveredge.vercel.app)** (will
-  move to cloveredge.net once that custom domain is connected — see
-  "Hosting & deployment"). GitHub auto-deploy is now connected (see
-  "Hosting & deployment" below): pushes to `main` deploy automatically.
-  `vercel deploy --prod` from the repo root still works as a manual
-  fallback if ever needed.
-- Next.js 15 (App Router, TypeScript, Tailwind, ESLint)
-- Prisma 7 ORM, schema at [`prisma/schema.prisma`](prisma/schema.prisma), migrated
-  and seeded against a live Postgres database
-- **Database**: a free Prisma Postgres dev instance (claimed, no longer
-  expiring). **Production and local dev currently share this same database**
-  — anything typed into the live site (subscribes, guest clicks) shows up
-  locally too, and vice versa. Fine for a demo/share link; split into
-  separate dev/prod databases before any real public launch.
-- **Real magic-link email delivery is live** via Resend (pulled forward
-  from Phase 5 — just the "send an email" piece, not the full digest
-  system). `AUTH_RESEND_KEY` + `EMAIL_FROM` set both locally and on Vercel
-  production. Sender is Resend's sandbox address (`onboarding@resend.dev`),
-  which **only delivers to the email the Resend account itself was created
-  with** — fine for the current admin accounts, but won't reach arbitrary
-  visitors; verifying a real domain is needed before this works for anyone
-  who signs up. Verified locally: sign-in flow reaches Auth.js's
-  `/api/auth/verify-request` success page with no errors and no
-  console-log fallback firing, confirming the real Resend path ran.
-- **Two admin accounts** (`User.isAdmin = true`, seeded in `prisma/seed.ts`):
-  `admin@casinowatch.local` (demo/test account, kept as-is — see the note
-  at the top of this document) and `eschulke@hotmail.com`
-  (the actual publisher — real admin access, can sign in for real now that
-  email delivery works).
-- **Homepage** ([`src/app/page.tsx`](src/app/page.tsx)) is the MSN-style
-  dashboard described in Phase 2: hero, Trending Now, and topic rails driven
-  by `HomepageModule`, all visible with zero login
-- `POST /api/subscribe` — creates/updates a `User` with selected `PreferenceTopic`s
-- Magic-link auth via Auth.js (`src/lib/auth.ts`), Prisma-backed sessions —
-  see real email delivery note above.
-- `src/proxy.ts` assigns an anonymous `cw_guest_id` cookie to every visitor
-  (Next.js renamed `middleware.ts` → `proxy.ts` in this version — verified
-  against the bundled docs, not assumed from training data)
-- Prisma client singleton at [`src/lib/prisma.ts`](src/lib/prisma.ts)
-- `YOUTUBE_API_KEY` (local `.env` only, restricted to YouTube Data API v3) —
-  used by `prisma/seed.ts` to pull real video data at seed time. The running
-  app doesn't call the YouTube API itself yet (videos are read from
-  `VideoEmbed` rows already in Postgres), so this key isn't needed on Vercel
-  until Phase 4's scheduled refresh job gets built.
+- **Live at [www.cloveredge.net](https://www.cloveredge.net)** (connected
+  2026-11-22; `cloveredge.net` redirects to `www`, and
+  `cloveredge.vercel.app` still works). Magic-link sign-in URLs already use
+  the new domain — verified via `/api/auth/providers`. Pushes to `main` deploy
+  automatically.
+- **Next.js 16** (App Router, TypeScript, Tailwind v4, ESLint). Note: this
+  version differs from older Next.js in places (e.g. `middleware.ts` is now
+  `proxy.ts`) — check `node_modules/next/dist/docs/` before relying on
+  memory.
+- **Design system**: shadcn/ui components in `src/components/ui/`, Motion,
+  Lucide icons, Sonner toasts — installed 2026-11-22, not yet used by any
+  page.
+- Prisma 7 ORM, schema at [`prisma/schema.prisma`](prisma/schema.prisma)
+- **Databases (split 2026-11-22)**: production runs on **Neon** (Postgres
+  18, provisioned through Vercel's Neon integration with env prefix `NEON_`;
+  the app reads `DATABASE_URL`, which in Vercel Production is set to Neon's
+  pooled URL). Local dev uses the old Prisma Postgres instance via
+  `DATABASE_URL` in `.env.local` (`vercel env pull` overwrites that file —
+  re-add the line after pulling). Vercel marks all of these values
+  Sensitive, so `vercel env pull` returns placeholders, not real values.
+  - **Schema changes now go through migrations only**: `npm run db:migrate`
+    locally (dev DB), then `prisma migrate deploy` against Neon's
+    *unpooled* URL for production. Never `db push`.
+  - **What the move fixed**: (1) the September knowledge-graph stubs
+    (`SlotGame`, `GameProvider`, `AuditLogEntry`, review fields,
+    `isContentReviewer`) had been added to `schema.prisma` but never
+    migrated, so every `/content/[slug]` page was returning a 500 in
+    production — the missing migration is now
+    `20261122000000_knowledge_graph_stubs`, applied to both databases;
+    (2) the homepage intermittently failed with "too many database
+    connections" on Prisma's free tier — Neon's pooled connection
+    resolves it.
+- **Email**: magic-link sign-in via Resend, sandbox sender only — delivers
+  only to the Resend account owner's address until a domain is verified
+  (`cloveredge.net` can be that domain once connected).
+- **Admins**: `admin@casinowatch.local` (demo) and Edward's real account,
+  both seeded in `prisma/seed.ts`.
+- **Homepage** ([`src/app/page.tsx`](src/app/page.tsx)): MSN-style
+  dashboard — Top Story carousel, Trending Now, topic rails, guest and
+  signed-in personalization (Phase 2, done).
+- **Videos**: 5 real slot videos, hand-seeded; `/videos` filter page live.
+  No automated collection or AI tagging yet.
+- `YOUTUBE_API_KEY` in local `.env` only (used by the seed script).
 
-## Data model summary (current + planned additions)
+## Data model summary
 
 | Model | Purpose | Status |
 |---|---|---|
-| `User` | Account, jurisdiction, digest frequency, age-verification, `tier` (FREE/PAID), `isAdmin`/`isContentReviewer` roles | Built |
-| `PreferenceTopic` | Opt-in unit — topic, region, or casino type; `pinnedTrendingOrder` for admin Trending Now override | Built |
-| `Casino` | Online/land-based/hybrid entity | Built — needs rating breakdown fields (Phase 3) |
+| `User` | Account, preferences, `tier`, `isAdmin`/`isContentReviewer` | Built |
+| `PreferenceTopic` | Opt-in topic/region; Trending Now pins | Built |
+| `Casino` | Online/land-based casino — becomes the graph's **Venue** node | Built — needs location fields (Milestone 1) |
 | `Bonus` | Promo offers tied to a casino | Built |
-| `ContentItem` | Editorial content, source-tagged, `tier`-gated (FREE/PAID), `featured`/`featuredOrder` curate the "Top Story" carousel pool (order personalizes for signed-in preference matches, fixed default otherwise) | Built |
+| `ContentItem` | Editorial content, `tier`-gated, featured carousel | Built |
 | `NewsletterIssue` | Sent-issue snapshot | Built |
-| `Comment` | User review/comment on a casino experience, optional 1-5 rating, moderation status | Built |
-| `Account` / `Session` / `VerificationToken` | Auth.js magic-link sign-in (Prisma adapter) | Built |
-| `HomepageModule` | Configurable homepage rail (hero, category rail, trending widget) with ordering/active flags | Built |
-| `GuestSignal` | Anonymous, cookie-keyed lightweight interest signal (no PII) for guest personalization | Built |
-| `SlotGame` | Specific slot title, linked `GameProvider`, RTP, volatility | Built — schema only, not yet populated; pulled forward from Phase 3 because specific-game search is core to video discovery |
-| `GameProvider` | Game manufacturer (Aristocrat, IGT, etc.) — distinct from `VideoEmbed.channelTitle` (who posted the video) | Built — schema only, not yet populated |
-| `CasinoRatingCriteria` | Scored sub-categories (trust, payout speed, game variety, support) rolling up to `Casino.ratingAvg` | Planned — Phase 3 |
-| `OddsSnapshot` | Cached Polymarket market/price snapshot, polled periodically | Planned — Phase 4 |
-| `VideoEmbed` | Real YouTube video (official metadata) + `gameType`/`venueType`/`sentiment`/`slotGame`/`gameProvider`/`denomination` (classification, not official API fields) + human-review state (`reviewState`/`reviewedBy`/`confidenceScore`/`staffNotes`), one-to-one with a `ContentItem` | Built — populated with 5 real slot videos; new discovery/review fields added but not yet populated by the classification pipeline (Step 2) |
-| `CreatorProfile` | Content creator/channel submission for promotion (status: pending/approved, featured flag) | Planned — Phase 4 |
-| `AuditLogEntry` | Generic attributable log of consequential admin/moderation actions (who, what, when) | Built — schema only, not yet wired into any admin action (see "Foundational principle" above) |
+| `Comment` | Paid-tier casino review, moderated | Built (no UI) |
+| `Account` / `Session` / `VerificationToken` | Auth.js | Built |
+| `HomepageModule` | Configurable homepage rails | Built |
+| `GuestSignal` | Anonymous interest signal (no PII) | Built |
+| `VideoEmbed` | YouTube video — becomes the graph's **Video** node | Built — 5 videos; reshaped in Milestone 1 |
+| `SlotGame` | → renamed **Game** in Milestone 1 | Schema only, empty |
+| `GameProvider` | Game manufacturer | Schema only, empty |
+| `AuditLogEntry` | Who did what, when | Schema only, not wired in |
+| **Creator, Play, Win, ExtractionRun, Alias** | Knowledge graph v1 | **Proposed** — see "Knowledge graph v1" |
+| `CasinoRatingCriteria`, `OddsSnapshot`, `CreatorProfile` | Phase 3/4 | Planned, parked |
+
+# Later roadmap (parked until the near-term milestones are running)
+
+Original phase plan, kept for its decisions and research. Phases 1-2 are
+done; 3-7 are parked.
 
 ## Phase 1 — Foundation (local dev loop) — done
 
@@ -748,8 +822,8 @@ examples hit all of these — revisit before automating):
       poker/sports betting once the classification approach is solid
 - [ ] Refresh job (currently one-time seed data) — poll for new videos on
       a schedule via cheap `videos.list` calls per the quota-caching rule
-- [ ] Filters UI on the "Game & Casino Videos" rail using `gameType`/
-      `venueType`/`sentiment` once there's enough classified volume to filter
+- [x] Filters UI — built as the `/videos` page (game type / venue / sort);
+      richer graph filters are Milestone 5
 - [ ] Creator promotion program:
   - [ ] Public "submit your channel" form → `CreatorProfile` (pending status)
   - [ ] Admin approval workflow
@@ -812,14 +886,11 @@ explicitly not urgent — see "Monetization" near the top of this document.
   called live per page view — quota and cost both depend on this
 - **Testing**: Playwright/Vitest once there's real user-facing logic worth
   protecting (subscribe flow, digest generation, homepage personalization)
-- **Deployment**: Vercel remains the path of least resistance
+- **Deployment**: Vercel, with the domain at GoDaddy (see "Hosting & deployment")
+
 
 ## Immediate next steps
 
-1. **Video filtering** (see "Current priority" above) — filter chips + URL
-   search params on the video rail; this is the active focus
-2. Everything below is real roadmap, not urgent right now:
-   - Phase 3: casino/slot ratings + the paid-tier comment/review submission UI
-   - Prototype the Polymarket Gamma API call before building the odds widget
-   - Revisit caching (ISR or a shorter-lived cache layer) on homepage rails
-     once there's enough content volume for the per-request DB fetch to matter
+1. **Build the knowledge graph v1** (approved 2026-11-22) — Milestone 1.
+2. Start the gold set: hand-tag the first videos with Claude Code
+   (Milestone 2).
