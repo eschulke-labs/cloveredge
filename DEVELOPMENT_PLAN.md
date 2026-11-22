@@ -338,6 +338,17 @@ collect → watch → record loop runs first).
 **Milestone 2 — Collect videos**
 - [ ] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
       Studio layout, reviewer/admin sign-in gate; move `/admin/homepage` in.
+- [ ] Studio reference data — the authoritative records everything else
+      links to (Edward, 2026-11-22: "manage all the data about the casinos
+      and other points of authoritative data"). List / search / add / edit
+      for **Casinos** (name, type, city/region/country, map location,
+      jurisdiction, website), **Games** (name, maker, type, RTP,
+      volatility), **Game makers**, and **Creators** (channel, handle).
+      Each record's page also shows its **aliases** (add/remove) and what
+      links to it (videos, plays). **Merge** two records that turn out to
+      be the same thing (moves every link + keeps the loser's name as an
+      alias) instead of deleting; delete only when nothing links to it.
+      Every change writes an `AuditLogEntry` with before/after.
 - [ ] Studio "Add video" form: paste a YouTube URL → fetch official metadata
       (`videos.list`, 1 quota unit) → create Video + Creator.
 - [ ] Channel watchlist: admin adds creator channels; a scheduled job
