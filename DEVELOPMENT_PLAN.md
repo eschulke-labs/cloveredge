@@ -324,8 +324,16 @@ collect → watch → record loop runs first).
       `denominationExact`) and the empty `SlotGame` table — only after the
       code from part 1 is live, since the previous deployment still
       selects those columns.
-- [ ] Tag the 5 existing videos (Plays/Wins/venue/date) — first entries in
-      the gold set (Milestone 2).
+- [x] First-pass tags for the 5 existing videos (`prisma/gold/tag-v0.ts`,
+      dev + prod, 2026-11-22): 7 Plays, 5 Wins, 2 venues, 2 recording
+      dates, from the YouTube Data API + title/tags/thumbnail/auto-chapters.
+      Each video's `staffNotes` lists what's still unknown.
+- [ ] Edward watches the 5 videos, confirms/corrects the tags and fills the
+      gaps (venues, dates, bets, win amounts) → mark VERIFIED. These become
+      the first gold-set entries (Milestone 2).
+- [x] `YOUTUBE_API_KEY` in `.env.local` (key restricted to YouTube Data API
+      v3). Not yet on Vercel — add it when Milestone 2's "Add video" form
+      needs it.
 
 **Milestone 2 — Collect videos**
 - [ ] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
