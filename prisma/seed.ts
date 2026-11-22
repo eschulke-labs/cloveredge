@@ -229,10 +229,22 @@ async function main() {
   ];
 
   for (const { featuredOrder, ...v } of slotVideos) {
+    // Knowledge graph Creator node — same slug rule as the backfill in
+    // migration 20261122100000_knowledge_graph_v1_expand, so seeding a DB
+    // that already went through that migration reuses the same rows.
+    const creatorSlug = v.channelTitle
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+    const creator = await prisma.creator.upsert({
+      where: { slug: creatorSlug },
+      update: {},
+      create: { name: v.channelTitle, slug: creatorSlug },
+    });
     const video = await prisma.videoEmbed.upsert({
       where: { youtubeVideoId: v.youtubeVideoId },
-      update: {},
-      create: { ...v, gameType: "SLOTS" },
+      update: { creatorId: creator.id },
+      create: { ...v, gameType: "SLOTS", creatorId: creator.id },
     });
     await prisma.contentItem.upsert({
       where: { slug: `video-${v.youtubeVideoId}` },

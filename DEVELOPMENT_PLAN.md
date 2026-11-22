@@ -210,11 +210,15 @@ Every Play, Win, venue link and date carries:
   version, which inputs it saw (text only / thumbnails / frames), the raw
   JSON it returned, and cost
 
-A human correction doesn't overwrite the AI's row — it adds a `HUMAN` row
-that wins. That keeps the "AI guessed X, human said Y" pairs that the
-teach-the-classifier loop (below) needs, and lets the whole graph be
-re-run with a better model/prompt and compared, because the raw output is
-kept.
+A human correction edits the fact in place and flips its source to
+`HUMAN` (and writes an `AuditLogEntry` with before/after). The AI's
+original guess is never lost: it stays verbatim in `ExtractionRun.output`.
+Diffing the two gives the "AI guessed X, human said Y" pairs the
+teach-the-classifier loop (below) needs, and the raw output lets the whole
+graph be re-run with a better model/prompt and compared. *(Changed while
+building, 2026-11-22: the first draft added a second `HUMAN` row per
+correction; editing in place gives the same history with much simpler
+queries — no "which row is current" filtering on every read.)*
 
 ### Aliases — so the same thing isn't recorded five ways
 
@@ -304,8 +308,24 @@ collect → watch → record loop runs first).
 - [ ] `ANTHROPIC_API_KEY` added locally and on Vercel.
 
 **Milestone 1 — Knowledge graph schema v1**
-- [ ] Prisma migration implementing the nodes/edges/provenance above.
-- [ ] Re-seed the 5 existing videos into the new shape.
+- [x] Schema written (`prisma/schema.prisma`, "KNOWLEDGE GRAPH v1"
+      block): `Creator`, `Game` (was `SlotGame`), `GameProvider`, venue
+      fields on `Casino`, `Play`, `Win`, `ExtractionRun`, `Alias`, plus
+      where/when fields on `VideoEmbed`. Smoke-tested on the dev DB: a
+      full Video → Play → Game → Provider + Win + Venue + Alias chain
+      reads back correctly via graph queries.
+- [x] Part 1 migration, "expand" (`20261122100000_knowledge_graph_v1_expand`):
+      additive only, so the live app keeps working while it's applied.
+      Backfills one `Creator` per existing channel and links the 5
+      videos. Applied to dev.
+- [ ] Apply part 1 to production (Neon), then deploy the code.
+- [ ] Part 2 migration, "contract": drop the old single-game columns on
+      `VideoEmbed` (`slotGameId`, `gameProviderId`, `denomination`,
+      `denominationExact`) and the empty `SlotGame` table — only after the
+      code from part 1 is live, since the previous deployment still
+      selects those columns.
+- [ ] Tag the 5 existing videos (Plays/Wins/venue/date) — first entries in
+      the gold set (Milestone 2).
 
 **Milestone 2 — Collect videos**
 - [ ] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
@@ -615,10 +635,10 @@ automatically by Vercel.
 | `HomepageModule` | Configurable homepage rails | Built |
 | `GuestSignal` | Anonymous interest signal (no PII) | Built |
 | `VideoEmbed` | YouTube video — becomes the graph's **Video** node | Built — 5 videos; reshaped in Milestone 1 |
-| `SlotGame` | → renamed **Game** in Milestone 1 | Schema only, empty |
+| `Game` (was `SlotGame`) | Specific game title, provider, type | Built 2026-11-22, empty |
 | `GameProvider` | Game manufacturer | Schema only, empty |
 | `AuditLogEntry` | Who did what, when | Schema only, not wired in |
-| **Creator, Play, Win, ExtractionRun, Alias** | Knowledge graph v1 | **Proposed** — see "Knowledge graph v1" |
+| **Creator, Play, Win, ExtractionRun, Alias** | Knowledge graph v1 | **Built 2026-11-22** (dev; production pending) — 5 creators backfilled |
 | `CasinoRatingCriteria`, `OddsSnapshot`, `CreatorProfile` | Phase 3/4 | Planned, parked |
 
 # Later roadmap (parked until the near-term milestones are running)

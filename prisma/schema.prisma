@@ -57,22 +57,23 @@ enum AccessTier {
 }
 
 model User {
-  id                 String              @id @default(cuid())
-  email              String              @unique
+  id                 String             @id @default(cuid())
+  email              String             @unique
   name               String?
-  createdAt          DateTime            @default(now())
-  ageVerifiedAt      DateTime?           // 18+/21+ gate, jurisdiction-dependent
-  jurisdiction       String?             // ISO country/state code, drives compliance + relevant content
-  preferences        PreferenceTopic[]   @relation("UserPreferences")
-  digestFrequency    DigestFrequency     @default(WEEKLY)
-  subscriptionStatus SubscriptionStatus  @default(ACTIVE)
-  tier               AccessTier          @default(FREE)
+  createdAt          DateTime           @default(now())
+  ageVerifiedAt      DateTime? // 18+/21+ gate, jurisdiction-dependent
+  jurisdiction       String? // ISO country/state code, drives compliance + relevant content
+  preferences        PreferenceTopic[]  @relation("UserPreferences")
+  digestFrequency    DigestFrequency    @default(WEEKLY)
+  subscriptionStatus SubscriptionStatus @default(ACTIVE)
+  tier               AccessTier         @default(FREE)
   issuesSent         NewsletterIssue[]
   comments           Comment[]
-  isAdmin            Boolean             @default(false) // gates /admin — minimal role model for now
-  isContentReviewer  Boolean             @default(false) // gates the video review queue; isAdmin implies this too, doesn't replace it
-  reviewedVideos     VideoEmbed[]        // videos this user has reviewed/corrected — see DEVELOPMENT_PLAN.md human-in-the-loop section
-  auditLogActions    AuditLogEntry[]     // consequential actions this user has taken — see DEVELOPMENT_PLAN.md governance section
+  isAdmin            Boolean            @default(false) // gates /admin — minimal role model for now
+  isContentReviewer  Boolean            @default(false) // gates the video review queue; isAdmin implies this too, doesn't replace it
+  reviewedVideos     VideoEmbed[] // videos this user has reviewed/corrected — see DEVELOPMENT_PLAN.md human-in-the-loop section
+  auditLogActions    AuditLogEntry[] // consequential actions this user has taken — see DEVELOPMENT_PLAN.md governance section
+  extractionRuns     ExtractionRun[] // AI/hand-tagging passes this user started
 
   // Auth.js (magic-link email sign-in) — standard adapter fields/relations.
   emailVerified DateTime?
@@ -120,12 +121,12 @@ model VerificationToken {
 // "Bonus Offers", "Sports Betting", "Regulatory News", "Responsible Gambling".
 // Also doubles as a region/jurisdiction tag when `kind = REGION`.
 model PreferenceTopic {
-  id        String        @id @default(cuid())
-  slug      String        @unique
-  label     String
-  kind      TopicKind     @default(TOPIC)
-  users     User[]        @relation("UserPreferences")
-  content   ContentItem[] @relation("ContentTopics")
+  id      String        @id @default(cuid())
+  slug    String        @unique
+  label   String
+  kind    TopicKind     @default(TOPIC)
+  users   User[]        @relation("UserPreferences")
+  content ContentItem[] @relation("ContentTopics")
 
   // Admin override for the Trending Now widget (/admin/homepage). Null =
   // not pinned. When ANY topic has a non-null value, Trending Now shows
@@ -141,16 +142,28 @@ enum TopicKind {
 }
 
 model Casino {
-  id          String     @id @default(cuid())
-  name        String
-  slug        String     @unique
-  type        CasinoType
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  type         CasinoType
   jurisdiction String?
-  website     String?
-  ratingAvg   Float?
-  content     ContentItem[]
-  bonuses     Bonus[]
-  comments    Comment[]
+  website      String?
+  ratingAvg    Float?
+  content      ContentItem[]
+  bonuses      Bonus[]
+  comments     Comment[]
+
+  // Knowledge graph "Venue" node (DEVELOPMENT_PLAN.md "Knowledge graph
+  // v1"). Kept as `Casino` rather than renamed because the rest of the app
+  // (bonuses, reviews, content) already means the same thing by it. Location
+  // fields are nullable — an AI pass often knows "a Las Vegas casino" before
+  // it knows which one, and an online casino has no address at all.
+  city      String?
+  region    String? // state/province
+  country   String? // ISO 3166-1 alpha-2, e.g. "US"
+  latitude  Float?
+  longitude Float?
+  videos    VideoEmbed[] @relation("VideoVenue")
 }
 
 model Bonus {
@@ -166,21 +179,21 @@ model Bonus {
 // Single table for all editorial content regardless of where it came from
 // (manual CMS entry today, automated feed ingestion later).
 model ContentItem {
-  id          String        @id @default(cuid())
+  id          String            @id @default(cuid())
   title       String
-  slug        String        @unique
+  slug        String            @unique
   excerpt     String?
   body        String
   contentType ContentType
-  source      ContentSource @default(MANUAL)
-  sourceUrl   String?       // set when source = FEED
-  tier        AccessTier    @default(FREE) // FREE visible to everyone incl. guests; PAID requires an active subscriber
-  casino      Casino?       @relation(fields: [casinoId], references: [id])
+  source      ContentSource     @default(MANUAL)
+  sourceUrl   String? // set when source = FEED
+  tier        AccessTier        @default(FREE) // FREE visible to everyone incl. guests; PAID requires an active subscriber
+  casino      Casino?           @relation(fields: [casinoId], references: [id])
   casinoId    String?
   topics      PreferenceTopic[] @relation("ContentTopics")
   publishedAt DateTime?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
 
   // Set when contentType = GAMEPLAY_VIDEO. One-to-one: a video embed is
   // always wrapped by exactly one ContentItem so it can carry topics/tier
@@ -204,7 +217,7 @@ model NewsletterIssue {
   userId     String
   subject    String
   sentAt     DateTime?
-  contentIds String[]  // ContentItem ids included in this issue
+  contentIds String[] // ContentItem ids included in this issue
   createdAt  DateTime  @default(now())
 }
 
@@ -226,7 +239,7 @@ model Comment {
   casino    Casino?       @relation(fields: [casinoId], references: [id])
   casinoId  String?
   body      String
-  rating    Int?          // 1-5, optional — supports a quick "liked it / didn't" without forcing a score
+  rating    Int? // 1-5, optional — supports a quick "liked it / didn't" without forcing a score
   status    CommentStatus @default(PENDING)
   createdAt DateTime      @default(now())
 }
@@ -292,119 +305,302 @@ enum VideoSentiment {
   UNKNOWN
 }
 
+// =========================================================================
+// KNOWLEDGE GRAPH v1 (approved 2026-11-22 — DEVELOPMENT_PLAN.md
+// "Knowledge graph v1"). Nodes: VideoEmbed (Video), Creator, Game,
+// GameProvider, Casino (Venue). Edges carrying facts: Play (Video → Game,
+// with the bet) and Win (on a Play). Every AI-derivable fact carries
+// provenance: `source`, `confidence`, and the ExtractionRun that produced
+// it. Grow by adding node types/tables — never by overloading columns.
+// =========================================================================
+
 // Broad bet-size tier — filterable, matches how players actually talk about
-// denomination, rather than forcing an exact amount out of every video.
-// See DEVELOPMENT_PLAN.md "Current priority" section for the buckets-vs-
-// exact-amount decision.
+// denomination. Lives on Play (one video can show several bet sizes), with
+// the exact amount alongside when known.
 enum Denomination {
-  PENNY      // roughly $0.01-$0.24
-  LOW        // roughly $0.25-$4.99
-  MID        // roughly $5-$24.99
+  PENNY // roughly $0.01-$0.24 per spin
+  LOW // roughly $0.25-$4.99
+  MID // roughly $5-$24.99
   HIGH_LIMIT // roughly $25+
   UNKNOWN
 }
 
-// Human-in-the-loop review status for an AI-classified video. Videos
-// publish immediately on AI classification (decided — see
-// DEVELOPMENT_PLAN.md); this tracks whether a staff member has since
-// confirmed or corrected the tags, not whether the video is visible.
+// Human-in-the-loop review status for a video's extracted facts. Videos
+// publish immediately on AI extraction (decided 2026-09-30); this tracks
+// whether staff have since confirmed or corrected them, not visibility.
 enum VideoReviewState {
   UNREVIEWED
   VERIFIED
   NEEDS_FIXING
 }
 
-// The company that manufactures/develops the game itself (Aristocrat, IGT,
-// Light & Wonder, etc.) — distinct from VideoEmbed.channelTitle, which is
-// who POSTED the video. Needed for RTP/volatility-driven recommendations,
-// not just video attribution. A video can reference a provider directly
-// (classifier identified the manufacturer but not the exact game) and/or
-// via its SlotGame once that's known.
-model GameProvider {
-  id    String     @id @default(cuid())
-  name  String     @unique
-  slug  String     @unique
-  games SlotGame[]
-  videos VideoEmbed[]
+// Where a fact came from. When staff edit an AI fact, the row is updated in
+// place and its source flips to HUMAN; the AI's original guess is never
+// lost because it stays in ExtractionRun.output (and the edit is in
+// AuditLogEntry). Diffing the two gives the (AI guess → human value) pairs
+// used to teach the extraction prompt.
+enum FactSource {
+  YOUTUBE_API
+  AI
+  HUMAN
 }
 
-// A specific, named slot title (e.g. "Buffalo Gold," "Dragon Link") — pulled
-// forward from its original Phase 3 scope (ratings) because specific-game
-// search is now core to video discovery, not a ratings-only feature. rtp/
-// volatility stay nullable since they're populated by the Phase 3 rating
-// work, not required just to tag a video with which game it shows.
-// Slots-only scope for now (decided) — table-game variants are a separate,
-// less standardized kind of "specific game," deferred.
-model SlotGame {
+// How precisely we know when footage was recorded. Creators rarely say, so
+// most videos start UNKNOWN; the publish date is never silently used as the
+// recording date — UI may *show* it as a labeled fallback.
+enum DatePrecision {
+  DAY
+  MONTH
+  YEAR
+  UNKNOWN
+}
+
+// What triggered a win. Handpay is a separate boolean on Win, not a kind:
+// a bonus round can end in a handpay.
+enum WinKind {
+  BASE_GAME
+  BONUS
+  FREE_SPINS
+  HOLD_AND_SPIN
+  PROGRESSIVE
+  OTHER
+}
+
+// Win size by multiplier (win ÷ bet), the way players judge wins.
+// Thresholds: <10x SMALL, 10-49x NICE, 50-99x BIG, 100-499x HUGE, 500x+ EPIC.
+// Stored (not only computed) so it can be filtered/indexed; must be
+// recomputed whenever amount or bet changes — see src/lib/graph (Milestone 3).
+enum WinSize {
+  SMALL
+  NICE
+  BIG
+  HUGE
+  EPIC
+  UNKNOWN
+}
+
+enum ExtractionInput {
+  TEXT // title / description / tags
+  THUMBNAILS // YouTube's official thumbnail images
+  FRAMES // frames from footage we're permitted to analyze (creator-provided)
+}
+
+enum ExtractionStatus {
+  SUCCEEDED
+  FAILED
+}
+
+// Polymorphic target for Alias — which node table entityId points into.
+enum AliasEntity {
+  GAME
+  PROVIDER
+  CREATOR
+  CASINO
+}
+
+// The YouTube channel that posted a video — "who made this." Distinct from
+// GameProvider (who manufactured the game). youtubeChannelId is nullable
+// only because the original 5 seeded videos predate storing it; every video
+// added through the Studio records it.
+model Creator {
+  id               String       @id @default(cuid())
+  youtubeChannelId String?      @unique
+  name             String
+  slug             String       @unique
+  handle           String? // e.g. "@nesslots"
+  thumbnailUrl     String?
+  createdAt        DateTime     @default(now())
+  videos           VideoEmbed[]
+}
+
+// The company that manufactures the game (Aristocrat, IGT, Light & Wonder…).
+// Needed for RTP/volatility-driven recommendations, not just attribution.
+model GameProvider {
+  id    String @id @default(cuid())
+  name  String @unique
+  slug  String @unique
+  games Game[]
+  plays Play[] // plays where the provider is known but the exact game isn't
+}
+
+// A specific, named game ("Dragon Link: Golden Century", "Buffalo Gold").
+// Formerly `SlotGame` (empty when renamed) — widened with gameType so table
+// games fit later without a new model, though content is slots-first.
+model Game {
   id         String        @id @default(cuid())
   name       String
   slug       String        @unique
+  gameType   VideoGameType @default(SLOTS)
   provider   GameProvider? @relation(fields: [providerId], references: [id])
   providerId String?
-  rtp        Float?        // return-to-player %, when known (Phase 3)
-  volatility String?       // freeform ("low"/"medium"/"high") until a real rubric exists (Phase 3)
-  videos     VideoEmbed[]
+  rtp        Float? // return-to-player %, when known (Phase 3)
+  volatility String? // freeform until a real rubric exists (Phase 3)
+  plays      Play[]
+}
+
+// Edge: Video → Game. One row per game played in a video (a session vlog
+// can have several). Carries the bet. Amounts are in `currency` only when
+// the denomination is known; otherwise betCredits is set and betAmount is
+// left null — never guessed (slot meters often show credits, not dollars).
+model Play {
+  id           String        @id @default(cuid())
+  video        VideoEmbed    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId      String
+  game         Game?         @relation(fields: [gameId], references: [id])
+  gameId       String? // null until resolved to a known Game
+  provider     GameProvider? @relation(fields: [providerId], references: [id])
+  providerId   String? // set when the maker is known but the exact game isn't
+  rawGameName  String? // the game name exactly as the source wrote/showed it
+  startSec     Int? // where this game starts in the video
+  endSec       Int?
+  betAmount    Decimal?      @db.Decimal(12, 2)
+  betCredits   Int?
+  creditValue  Decimal?      @db.Decimal(8, 4) // e.g. 0.0100 for a penny machine
+  denomination Denomination  @default(UNKNOWN)
+  currency     String        @default("USD")
+
+  source          FactSource     @default(AI)
+  confidence      Float? // 0-1
+  extractionRun   ExtractionRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
+  extractionRunId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  wins            Win[]
+
+  @@index([videoId])
+  @@index([gameId])
+}
+
+// A win event within a Play — "was there a win, and how big."
+model Win {
+  id            String   @id @default(cuid())
+  play          Play     @relation(fields: [playId], references: [id], onDelete: Cascade)
+  playId        String
+  atSec         Int? // timestamp in the video — powers "jump to the win"
+  kind          WinKind  @default(OTHER)
+  isHandpay     Boolean  @default(false)
+  amount        Decimal? @db.Decimal(14, 2)
+  amountCredits Int?
+  betAtWin      Decimal? @db.Decimal(12, 2) // bet when it hit, if different from Play.betAmount
+  multiplier    Float? // amount ÷ bet
+  size          WinSize  @default(UNKNOWN)
+
+  source          FactSource     @default(AI)
+  confidence      Float?
+  extractionRun   ExtractionRun? @relation(fields: [extractionRunId], references: [id], onDelete: SetNull)
+  extractionRunId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([playId])
+  @@index([size])
+}
+
+// One AI (or assisted hand-tagging) pass over one video. Keeps the raw
+// output so the graph can be re-run with a better model/prompt and compared,
+// and so the AI's original guesses survive human corrections.
+model ExtractionRun {
+  id            String            @id @default(cuid())
+  video         VideoEmbed        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId       String
+  model         String // e.g. "claude-opus-5-5", or "claude-code-session" for assisted hand-tagging
+  promptVersion String // bump whenever the extraction prompt/schema changes
+  inputs        ExtractionInput[]
+  output        Json? // the structured response, verbatim
+  status        ExtractionStatus  @default(SUCCEEDED)
+  error         String?
+  inputTokens   Int?
+  outputTokens  Int?
+  costUsd       Decimal?          @db.Decimal(10, 4)
+  triggeredBy   User?             @relation(fields: [triggeredById], references: [id])
+  triggeredById String?
+  createdAt     DateTime          @default(now())
+  plays         Play[]
+  wins          Win[]
+
+  @@index([videoId])
+}
+
+// Names as creators actually write them → the one real node ("Cosmo" →
+// The Cosmopolitan of Las Vegas; "DL Golden Century" → Dragon Link: Golden
+// Century). `normalized` is lowercase, punctuation/whitespace-collapsed —
+// matching is done on it. Polymorphic (no FK) so any node type can have
+// aliases without a table per type.
+model Alias {
+  id         String      @id @default(cuid())
+  entityType AliasEntity
+  entityId   String
+  alias      String
+  normalized String
+  createdAt  DateTime    @default(now())
+
+  @@unique([entityType, normalized])
+  @@index([entityType, entityId])
 }
 
 // Generic audit trail for consequential admin/moderation actions — who did
-// what, when, to what. A governance/business-continuity foundation (see
-// DEVELOPMENT_PLAN.md "Business continuity & governance"): decisions and
-// changes need to be attributable and reconstructable without depending on
-// one person's memory. Deliberately generic (string action/entityType)
-// rather than one table per action type, so a new admin action doesn't need
-// a schema change just to get logged.
+// what, when, to what (DEVELOPMENT_PLAN.md "Foundational principle").
+// Deliberately generic (string action/entityType) so a new admin action
+// doesn't need a schema change just to get logged.
 model AuditLogEntry {
   id         String   @id @default(cuid())
   actor      User?    @relation(fields: [actorId], references: [id])
   actorId    String?
-  action     String   // e.g. "video.review", "homepage.reorder", "comment.moderate"
-  entityType String   // e.g. "VideoEmbed", "HomepageModule", "Comment"
+  action     String // e.g. "video.review", "play.update", "homepage.reorder"
+  entityType String // e.g. "VideoEmbed", "Play", "HomepageModule"
   entityId   String
-  detail     Json?    // freeform before/after or context, when useful
+  detail     Json? // before/after or context, when useful
   createdAt  DateTime @default(now())
 }
 
-// A YouTube video pulled via the Data API (official metadata: title,
-// channel, duration, thumbnail, view count) plus gameType/venueType/
-// sentiment/slotGame/gameProvider/denomination, which are NOT official API
-// fields — they're filled in by the classification process (title/
-// description/tags/thumbnail review) since YouTube doesn't expose
-// structured "this is slots gameplay, a big win, on a $5 machine" metadata
-// itself. See DEVELOPMENT_PLAN.md Phase 4 / "Current priority" for the
-// classification notes and build sequence this was built from.
+// Graph "Video" node: a YouTube video. Official metadata comes from the
+// YouTube Data API; everything about what happens *in* the video (games,
+// bets, wins) lives on Play/Win, and where/when on venue/recordedOn here.
 model VideoEmbed {
   id                 String         @id @default(cuid())
   youtubeVideoId     String         @unique
   title              String
-  channelTitle       String
+  description        String?
+  tags               String[]
+  channelTitle       String // channel name as YouTube reported it; Creator is the graph node
   thumbnailUrl       String
   durationSeconds    Int
   gameType           VideoGameType
   venueType          VenueType      @default(UNKNOWN)
+  // Video-level outcome. Once a video has Plays/Wins this is derived from
+  // them (Milestone 3), not typed in separately.
   sentiment          VideoSentiment @default(UNKNOWN)
   viewCount          Int?
   youtubePublishedAt DateTime?
   fetchedAt          DateTime       @default(now())
   content            ContentItem?
 
-  // Specific-game + provider identification (nullable — not every video
-  // will be confidently classified to an exact game/provider, especially
-  // early in the AI pipeline's tiering).
-  slotGame       SlotGame?     @relation(fields: [slotGameId], references: [id])
-  slotGameId     String?
-  gameProvider   GameProvider? @relation(fields: [gameProviderId], references: [id])
-  gameProviderId String?
+  creator   Creator? @relation(fields: [creatorId], references: [id])
+  creatorId String?
 
-  // Denomination/bet size — bucketed for filtering, exact value stored
-  // alongside when a creator states one.
-  denomination      Denomination @default(UNKNOWN)
-  denominationExact Float?
+  // Where — current accepted value + provenance (AI guess kept in ExtractionRun).
+  venue           Casino?     @relation("VideoVenue", fields: [venueId], references: [id])
+  venueId         String?
+  rawVenueName    String? // as the source wrote it, e.g. "the Cosmo"
+  venueSource     FactSource?
+  venueConfidence Float?
+
+  // When — recording date, not publish date.
+  recordedOn          DateTime?
+  recordedOnPrecision DatePrecision @default(UNKNOWN)
+  recordedOnSource    FactSource?
+
+  plays          Play[]
+  extractionRuns ExtractionRun[]
 
   // Human-in-the-loop review state (publish-then-review, decided).
   reviewState     VideoReviewState @default(UNREVIEWED)
   reviewedBy      User?            @relation(fields: [reviewedById], references: [id])
   reviewedById    String?
   reviewedAt      DateTime?
-  confidenceScore Float?           // 0-1, from the AI classification call
-  staffNotes      String?          // internal only, never rendered to visitors
+  confidenceScore Float? // 0-1, overall, from the latest extraction run
+  staffNotes      String? // internal only, never rendered to visitors
+
+  @@index([creatorId])
+  @@index([venueId])
 }
