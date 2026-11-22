@@ -318,8 +318,8 @@ collect → watch → record loop runs first).
       additive only, so the live app keeps working while it's applied.
       Backfills one `Creator` per existing channel and links the 5
       videos. Applied to dev.
-- [ ] Apply part 1 to production (Neon), then deploy the code.
-- [ ] Part 2 migration, "contract": drop the old single-game columns on
+- [x] Apply part 1 to production (Neon), then deploy the code (2026-11-22).
+- [x] Part 2 migration, "contract" (`20261122200000_knowledge_graph_v1_contract`, applied to dev + prod 2026-11-22): drop the old single-game columns on
       `VideoEmbed` (`slotGameId`, `gameProviderId`, `denomination`,
       `denominationExact`) and the empty `SlotGame` table — only after the
       code from part 1 is live, since the previous deployment still
@@ -638,7 +638,7 @@ automatically by Vercel.
 | `Game` (was `SlotGame`) | Specific game title, provider, type | Built 2026-11-22, empty |
 | `GameProvider` | Game manufacturer | Schema only, empty |
 | `AuditLogEntry` | Who did what, when | Schema only, not wired in |
-| **Creator, Play, Win, ExtractionRun, Alias** | Knowledge graph v1 | **Built 2026-11-22** (dev; production pending) — 5 creators backfilled |
+| **Creator, Play, Win, ExtractionRun, Alias** | Knowledge graph v1 | **Built 2026-11-22** (dev + production) — 5 creators backfilled |
 | `CasinoRatingCriteria`, `OddsSnapshot`, `CreatorProfile` | Phase 3/4 | Planned, parked |
 
 # Later roadmap (parked until the near-term milestones are running)
