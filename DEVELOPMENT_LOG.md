@@ -57,6 +57,20 @@ Entry format: date · branch/commits · what changed · decisions · open items.
    on GitHub → Edward approves → merge to `main` (which deploys live).
    Nothing goes straight to `main`.
 
+5. **Data Factory strategy adopted** as CloverEdge's direction; written
+   into `DEVELOPMENT_PLAN.md`. Milestones re-ordered to follow it: 2
+   Collect videos · 3 Metadata foundation + gold set · 4 Watch pipeline +
+   publishing · 5 Review queue + learning · 6 Public discovery + redesign
+   · 7 Expand and deepen.
+6. **Publishing minimum**: the strategy's "Publishable" stage is the
+   automatic bar for going live (no human check); details of "confirmed
+   gambling relevance" to be worked out in Milestone 3.
+7. **Gold set first**: the ~50 hand-checked videos come before the AI
+   pipeline so its first run can be scored.
+
+PR #1 (docs) merged by Edward. The strategy doc and plan rewrite missed it
+and went into a follow-up docs PR.
+
 **Why the Studio isn't merged yet**: merging makes `/admin/homepage`
 redirect to `studio.cloveredge.net`, which doesn't exist until Edward
 adds it in Vercel + GoDaddy. Merging first would lock admins out.

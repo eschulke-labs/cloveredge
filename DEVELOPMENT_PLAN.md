@@ -300,14 +300,16 @@ timestamps (the player can start at a given second), game and venue links,
 ## Near-term roadmap — small milestones, each usable on its own (decided: 2026-11-22)
 
 Replaces the earlier 7-step "Build sequence" (same ideas, re-ordered so the
-collect → watch → record loop runs first).
+collect → watch → record loop runs first). **Re-ordered 2026-11-26** to
+follow the adopted Data Factory strategy (see below), keeping the
+hand-checked gold set ahead of the AI pipeline.
 
 **Milestone 0 — Foundations (now)**
 - [x] Design system installed: **shadcn/ui** (component library built on
       Tailwind, which the site already uses) + **Motion** (animation) +
       **Lucide** (icons) + **Sonner** (toast notifications). See "Design
       system" below. Installing it changes nothing visible yet — the
-      redesign is Milestone 5.
+      redesign is Milestone 6.
 - [x] Separate dev and production databases — done 2026-11-22. Production
       is on **Neon** (via the Vercel integration, env prefix `NEON_`;
       production `DATABASE_URL` = Neon's *pooled* URL). Local dev uses the
@@ -341,16 +343,16 @@ collect → watch → record loop runs first).
       Each video's `staffNotes` lists what's still unknown.
 - [ ] Edward watches the 5 videos, confirms/corrects the tags and fills the
       gaps (venues, dates, bets, win amounts) → mark VERIFIED. These become
-      the first gold-set entries (Milestone 2).
+      the first gold-set entries (Milestone 3).
 - [x] `YOUTUBE_API_KEY` in `.env.local` (key restricted to YouTube Data API
       v3). Not yet on Vercel — add it when Milestone 2's "Add video" form
       needs it.
 
-**Milestone 2 — Collect videos**
+**Milestone 2 — Collect videos** *(strategy: acquisition + YouTube metadata)*
 - [x] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
       Studio layout, reviewer/admin sign-in gate; move `/admin/homepage` in.
-      **Status 2026-11-26: built and type-checks locally, but not yet
-      committed, pushed, or live** — see the three ship steps below.
+      **Status 2026-11-26: built and committed on branch `studio-skeleton`
+      (PR #2, draft) — not yet live.**
       Built 2026-11-26 (`src/app/studio/`, `src/lib/studio.ts`,
       `src/lib/studio-routing.ts`). How it routes: on `studio.*` hosts the
       proxy rewrites `/x` → `/studio/x` (URLs stay clean; `/api/*` and
@@ -363,10 +365,10 @@ collect → watch → record loop runs first).
       `/admin/homepage` now redirects to Studio → Homepage. **Needs
       `studio.cloveredge.net` added in Vercel + GoDaddy before this code
       ships**, otherwise production admins have no way in.
-  - [ ] Review and commit the Studio code (separate commit from the docs).
+  - [x] Review and commit the Studio code (branch `studio-skeleton`, PR #2).
   - [ ] Add `studio.cloveredge.net` in Vercel (Settings → Domains) and the
         CNAME it shows in GoDaddy DNS; wait for the HTTPS certificate.
-  - [ ] Push to `main` (auto-deploys), then sign in at
+  - [ ] Merge PR #2 (auto-deploys), then sign in at
         `studio.cloveredge.net` and confirm Homepage editing works and
         `www.cloveredge.net/studio` returns 404.
   - [ ] Write `AuditLogEntry` rows from the Studio homepage Server Actions
@@ -382,36 +384,67 @@ collect → watch → record loop runs first).
       be the same thing (moves every link + keeps the loser's name as an
       alias) instead of deleting; delete only when nothing links to it.
       Every change writes an `AuditLogEntry` with before/after.
+- [ ] Curated starting list of creators/channels (Edward picks; the
+      strategy's "initial acquisition proof of concept").
 - [ ] Studio "Add video" form: paste a YouTube URL → fetch official metadata
-      (`videos.list`, 1 quota unit) → create Video + Creator.
-- [ ] Channel watchlist: admin adds creator channels; a scheduled job
-      (Vercel Cron — **open**: Vercel now calls Cron Jobs legacy and points
-      new work to Vercel Schedules; pick one when this is built) checks them for new uploads using cheap API calls (per
-      the quota rule in "Resources").
-- [ ] Hand-tag the first ~50 videos with Claude Code → the gold set.
+      (`videos.list`, 1 quota unit) → create Video + Creator. Re-adding the
+      same video never creates a duplicate.
+- [ ] Channel watchlist (daily discovery): a scheduled job checks listed
+      channels for new uploads using cheap API calls (per the quota rule in
+      "Resources"). **Open**: Vercel Cron (now called legacy) or Vercel
+      Schedules — pick when built.
+- [ ] Record where each video came from (which channel/search/person) and
+      when its YouTube metadata was last fetched; keep YouTube's own facts
+      separate from CloverEdge's interpretations.
 
-**Milestone 3 — "Watch" pipeline v1**
+**Milestone 3 — Metadata foundation + gold set** *(strategy phases 2 and 5, gold set moved first)*
+Edward, 2026-11-26: the ~50 hand-checked videos come **before** the AI
+pipeline, so the AI's very first run can be scored against them.
+- [ ] Agree the video metadata list: what's required to publish, what's
+      optional, and the strategy's new dimensions — betting behaviour
+      (min/max/typical bet, bet changes), playing style, content type,
+      session type, game features (bonus rounds, free spins), more venue
+      types (e.g. cruise ship).
+- [ ] Schema design for the above plus the Data Factory's tracking records
+      (publication stage, processing jobs, validation results, review
+      tasks — names in the strategy doc are proposals, not settled).
+      Summary numbers (biggest win, net result, bet category) are computed
+      from Plays/Wins, not stored separately. Migration only with Edward's
+      OK.
+- [ ] Edward verifies the 5 first-pass videos (Milestone 1), then the gold
+      set grows to ~50 hand-checked videos (Claude Code drafts, Edward
+      confirms).
+
+**Milestone 4 — "Watch" pipeline v1 + publishing** *(strategy: AI intelligence, validation, publishing)*
 - [ ] For each new video: one Claude call over title/description/tags +
-      thumbnails → Plays, Wins, venue, date, each with confidence; saved
-      with an ExtractionRun.
-- [ ] Validation pass after extraction: deterministic checks (known game /
-      provider / venue or alias, bet and win amounts in sane ranges, dates
-      not in the future, evidence present) that **flag** problems for the
-      review queue rather than silently fixing or dropping facts.
-- [ ] Videos publish immediately (publish-then-review, decided 2026-09-30).
-- [ ] Measure the pipeline against the gold set: accuracy per field (game,
-      bet, win amount, venue, date). This number decides what to improve
-      next.
+      thumbnails → Plays, Wins, venue, date and the new dimensions, each
+      with confidence and evidence; saved with an ExtractionRun (model and
+      prompt version recorded). Never invent a value — unknown stays
+      unknown.
+- [ ] Cheapest method first: text, then thumbnails; deeper analysis only
+      for a field that stays uncertain and only from permitted sources
+      (see "What watching means").
+- [ ] Validation pass: marks each field present / missing / unknown / not
+      observable / conflicting / low confidence, and **flags** problems for
+      the review queue rather than silently fixing or dropping facts.
+- [ ] **Publish as soon as the minimum is met** (see "Publishing" below);
+      enrichment continues after the video is live.
+- [ ] Measure against the gold set: accuracy per field (game, provider,
+      bet, denomination, win, multiplier, venue, playing style, content
+      type). These numbers decide what to improve next.
 
-**Milestone 4 — Review queue**
-- [ ] Studio review queue: lowest-confidence first, side-by-side AI guess vs
-      editable fields, mark Verified / Needs fixing, internal notes.
-      Gated on `isContentReviewer || isAdmin`.
-- [ ] Each correction stored as an (AI guess → human value) pair; a curated
-      set of them is added to the extraction prompt as examples.
+**Milestone 5 — Review queue + learning** *(strategy: human review and AI learning)*
+- [ ] Studio review queue: lowest-confidence and conflicting fields first,
+      side-by-side AI guess vs editable fields, mark Verified / Needs
+      fixing, internal notes. Gated on `isContentReviewer || isAdmin`.
+      Videos stay live while waiting.
+- [ ] Each correction stored as an (AI guess → human value) pair — the AI's
+      original is never overwritten; a curated set is added to the
+      extraction prompt as examples, and each prompt change is re-tested
+      against the gold set.
 - [ ] Every review action writes an `AuditLogEntry`.
 
-**Milestone 5 — Public discovery + redesign**
+**Milestone 6 — Public discovery + redesign**
 - [ ] Redesign homepage, `/videos`, and new pages on the design system.
 - [ ] Video watch page: embedded YouTube player + the graph facts around
       it, jump-to-win timestamps, related videos.
@@ -421,33 +454,68 @@ collect → watch → record loop runs first).
       `/casinos/[slug]` — each listing connected videos and stats (e.g.
       "biggest wins on Dragon Link this month").
 - [ ] Filters on `/videos`: game, provider, creator, venue, bet range, win
-      size, recorded date.
+      size, multiplier, playing style, recorded date.
 
-**Milestone 6 — Better watching**
+**Milestone 7 — Expand and deepen** *(strategy phase 7 + later items)*
+- [ ] More creators; historical backfill of their older uploads in
+      batches; targeted searches for chosen games; smarter prioritisation.
+- [ ] Studio operations dashboard: videos at each pipeline stage, AI
+      accuracy per field, failed jobs/retries, API quota use, AI cost per
+      video.
 - [ ] Creator-provided footage → real frame sampling (every N seconds +
       around win moments).
 - [ ] Recommendation engine v1 — still blocked on the two open questions
       below.
 
-### Data Factory — how the milestones fit the target pipeline (recorded 2026-11-26)
+### Data Factory strategy (adopted by Edward: 2026-11-26)
 
-`CLAUDE.md` describes the video pipeline as six processes that can each be
-run, retried and checked on their own, with saved inputs/outputs, status
-and provenance, and no duplicate records on retry. That's a target shape,
-not something built yet, and it doesn't mean six services — early on it
-can all live in this one app. How it maps onto the milestones:
+The full strategy is in
+[`docs/strategy/data-factory-strategy.md`](docs/strategy/data-factory-strategy.md)
+(Markdown copy of Edward's `CloverEdge Development Strategy.docx`, written
+with ChatGPT). The milestones above follow it. The essentials:
 
-| Process | What it does | Milestone |
-|---|---|---|
-| 1. Acquisition | Find candidate videos, record where they came from, dedupe | M2 — "Add video" form, channel watchlist |
-| 2. YouTube metadata | Fetch/refresh official metadata within quota | M2 — `videos.list` on add; refresh later |
-| 3. AI video intelligence | Evidence → candidate facts with confidence | M3 — "Watch" pipeline v1 (`ExtractionRun`) |
-| 4. Validation | Rule checks; flag conflicts for review | M3 — validation pass (added 2026-11-26) |
-| 5. Human review & learning | Confirm/correct; keep corrections as examples | M4 — review queue |
-| 6. Publishing & enrichment | Show eligible facts; later updates enrich the same records | M3 (publish immediately) + M5 |
+- **What it is**: the Data Factory is the core CloverEdge capability that
+  acquires, understands, validates, publishes and keeps improving
+  information — not just a YouTube importer. YouTube is the first source;
+  casinos, game makers, reviews, sports betting and prediction markets
+  come later through the same approach.
+- **The loop it feeds**: Observe → Connect → Infer → Recommend → Learn.
+- **Six processes**, each runnable, retryable and checkable on its own,
+  with saved state, no duplicates on retry, and recorded provenance:
+  acquisition · YouTube metadata · AI video intelligence · validation ·
+  human review and learning · publishing with continuous enrichment.
+  They can share this one app and database; separate services only if
+  scale ever demands it.
+- **Why rich metadata**: a $2 bet winning $1,000 (500×) and a $500 bet
+  winning $10,000 (20×) are both "big wins" but very different
+  experiences — that difference is what future recommendations run on.
+- **Facts vs interpretations**: a visible $2 bet is a fact; "low-stakes
+  player" is a classification; a casino guessed from the carpet is
+  uncertain. Each keeps its evidence and confidence, and nothing is
+  invented to fill a field.
+- **"100% processed"** means every applicable field has been assessed and
+  given a status (known, unknown, not observable…), not that every fact
+  was found.
+- **Stays on Postgres + Prisma**; no graph database unless real queries
+  require one.
 
-Publish-then-review (2026-09-30) stays in force — the process names don't
-create a new review-before-publish gate.
+**Publishing (decided by Edward: 2026-11-26)** — publish-then-review,
+made concrete with the strategy's three stages:
+
+1. **Publishable — goes live automatically** when it has: a valid YouTube
+   URL and video ID, title, thumbnail, an identified creator (or creator
+   explicitly marked unknown), confirmed gambling relevance, a broad
+   content classification, a publication status, and its source recorded.
+   No human check needed. A video missing any of these waits in the Studio.
+2. **Enriched** — game, maker, bets, wins, playing style, venue and so on
+   are added while the video is live.
+3. **Complete** — every applicable field has been dealt with: evidence and
+   provenance recorded, conflicts resolved or documented, human
+   verification where needed.
+
+Still to refine in Milestone 3: exactly how "confirmed gambling relevance"
+is decided (YouTube's categories are too broad; search results include
+game trailers) and whether unverified AI facts get a public label.
 
 ### Design system (decided: 2026-11-22)
 
@@ -466,7 +534,7 @@ doesn't today. Chosen stack:
 - **Lucide** — consistent icon set.
 - **Sonner** — toast notifications (e.g. "Subscribed!").
 
-Still to decide in Milestone 5: the visual direction itself (e.g. dark
+Still to decide in Milestone 6: the visual direction itself (e.g. dark
 "premium casino" look with gold/emerald accents vs. a light editorial
 look), typography, and a CloverEdge color palette to replace the shadcn
 default grays.
@@ -929,7 +997,7 @@ examples hit all of these — revisit before automating):
 - [ ] Refresh job (currently one-time seed data) — poll for new videos on
       a schedule via cheap `videos.list` calls per the quota-caching rule
 - [x] Filters UI — built as the `/videos` page (game type / venue / sort);
-      richer graph filters are Milestone 5
+      richer graph filters are Milestone 6
 - [ ] Creator promotion program:
   - [ ] Public "submit your channel" form → `CreatorProfile` (pending status)
   - [ ] Admin approval workflow
@@ -999,10 +1067,12 @@ explicitly not urgent — see "Monetization" near the top of this document.
 
 1. **Ship the Studio skeleton** — review and commit the Studio code, add
    `studio.cloveredge.net` in Vercel + GoDaddy, push, and check it live
-   (Milestone 2's ship steps).
+   (Milestone 2's ship steps; PR #2).
 2. **Edward verifies the 5 tagged videos** → first gold-set entries
-   (Milestone 1's last open item).
+   (Milestone 1's last open item, start of the Milestone 3 gold set).
 3. **Studio reference data** — casinos, games, makers, creators, with
    aliases, merge and audit log (Milestone 2).
 4. **Studio "Add video" form** — needs `YOUTUBE_API_KEY` on Vercel.
-5. Before Milestone 3: add `ANTHROPIC_API_KEY` locally and on Vercel.
+5. Milestone 3: agree the metadata list and publishing minimum details,
+   then the schema design.
+6. Before Milestone 4: add `ANTHROPIC_API_KEY` locally and on Vercel.
