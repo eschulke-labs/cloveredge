@@ -32,6 +32,17 @@ Entry format: date · branch/commits · what changed · decisions · open items.
 - Added `TODO.md` (Edward's idea): to-dos, decisions waiting on Edward,
   and undecided ideas, kept up to date as we work.
 
+- Edward added **`CloverEdge Development Strategy.docx`** (Data Factory
+  Architecture & Knowledge Acquisition Strategy v1.0, written with
+  ChatGPT, status "Proposed"). Moved to `docs/strategy/` with a Markdown
+  copy, `docs/strategy/data-factory-strategy.md`, so GitHub and assistants
+  can read it. Reviewed against the plan and schema — it fits the
+  existing design and adds richer metadata (betting behaviour, playing
+  style, content/session type, game features), staged publishing
+  (Publishable → Enriched → Complete), job-tracking records, a
+  Studio operations dashboard, and historical backfill. Waiting on Edward
+  to say whether it's adopted (then it goes into the plan).
+
 **Decisions (Edward)**
 1. **Plan vs log**: `DEVELOPMENT_PLAN.md` = mission/vision, updated only
    when those change; `DEVELOPMENT_LOG.md` = all work and conversations,

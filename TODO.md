@@ -50,10 +50,24 @@ Owner tags: **[Edward]** needs you · **[Claude]** assistant can do it ·
       guidance) or something more automatic?
 - [ ] Channel watchlist scheduler: Vercel Cron (legacy) or Vercel
       Schedules.
+- [ ] Adopt the Data Factory strategy (`docs/strategy/`) as the plan's
+      direction? If yes → **[Claude]** fold it into `DEVELOPMENT_PLAN.md`
+      and re-order the milestones to match.
+- [ ] Is the strategy's "Publishable" minimum (valid video, title,
+      thumbnail, creator or "unknown", confirmed gambling relevance, broad
+      classification) the automatic bar for going live?
 - [ ] Carried over: recommendations tied to a named casino or
       casino-agnostic? "How to play": strategy, rules, or both?
 
 ## Ideas (not decided)
+
+- From the strategy doc: new fields for betting behaviour, playing style,
+  content/session type, game features; venue types like cruise ship;
+  derived stats (biggest win, net result) computed, not stored.
+- From the strategy doc: Studio operations dashboard (pipeline counts,
+  AI accuracy per field, API quota, AI cost per video).
+- From the strategy doc: historical backfill of creators' older uploads
+  and targeted game searches, alongside daily discovery.
 
 - Add `CONTRIBUTING.md` before inviting other developers (from the plan's
   documentation principle).
