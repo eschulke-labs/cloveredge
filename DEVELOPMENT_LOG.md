@@ -52,8 +52,9 @@ adds it in Vercel + GoDaddy. Merging first would lock admins out.
 
 **Open**
 - Edward: Vercel + GoDaddy steps for `studio.cloveredge.net`.
-- Edward: OK to push `main` and the branches to GitHub (a push was blocked
-  by the safety check, pending explicit approval).
+- Pushed both branches (Edward's OK). PR #1 = docs (ready to merge);
+  PR #2 = Studio (draft — merge only after the domain is set up and #1
+  is merged). `main` wasn't pushed directly; PR #1 carries its commits.
 - Edward: verify the 5 first-pass-tagged videos.
 - Edward to share the ChatGPT conversations to save in `docs/conversations/`.
 - Questions raised about publish-then-review details (see the 2026-11-26

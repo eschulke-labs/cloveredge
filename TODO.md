@@ -17,8 +17,9 @@ Owner tags: **[Edward]** needs you · **[Claude]** assistant can do it ·
 
 ## To do — now
 
-- [ ] **[Edward]** OK to push the `studio-skeleton` and `docs-dev-log`
-      branches to GitHub and open pull requests.
+- [x] **[Edward]** OK to push the branches — pushed 2026-11-26; PRs #1
+      (docs) and #2 (Studio, draft).
+- [ ] **[Edward]** Review and approve PR #1 (docs) on GitHub.
 - [ ] **[Edward]** Add `studio.cloveredge.net` in Vercel + GoDaddy
       (steps in `STUDIO_SETUP_STEPS.txt`).
 - [ ] **[Claude]** After the domain shows "Valid Configuration": merge the
