@@ -90,6 +90,16 @@ implications going forward:
 - `DEVELOPMENT_PLAN.md` stays the single source of truth for *why*; it
   doesn't get allowed to drift out of sync with what's actually built, the
   same discipline "Current state" (below) already follows.
+- **AI-assistant guidance is checked in (2026-11-26, commit `c4e7a31`).**
+  `CLAUDE.md` (product baseline, Data Factory target architecture, safety
+  rules — e.g. never read secrets, never migrate/deploy/seed without an
+  explicit ask), `AGENTS.md` (read the bundled Next.js docs before changing
+  Next.js code), and six focused skills in `.claude/skills/`
+  (development-partner, knowledge-graph-architecture,
+  personalization-and-inference, product-strategy, technical-architecture,
+  video-intelligence). Drafted with ChatGPT, committed by Edward's request.
+  They point back to this document as the source of truth — they guide how
+  an assistant works, they don't make product decisions.
 
 ## Where we actually are (reset: 2026-11-22)
 
@@ -338,6 +348,8 @@ collect → watch → record loop runs first).
 **Milestone 2 — Collect videos**
 - [x] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
       Studio layout, reviewer/admin sign-in gate; move `/admin/homepage` in.
+      **Status 2026-11-26: built and type-checks locally, but not yet
+      committed, pushed, or live** — see the three ship steps below.
       Built 2026-11-26 (`src/app/studio/`, `src/lib/studio.ts`,
       `src/lib/studio-routing.ts`). How it routes: on `studio.*` hosts the
       proxy rewrites `/x` → `/studio/x` (URLs stay clean; `/api/*` and
@@ -350,6 +362,14 @@ collect → watch → record loop runs first).
       `/admin/homepage` now redirects to Studio → Homepage. **Needs
       `studio.cloveredge.net` added in Vercel + GoDaddy before this code
       ships**, otherwise production admins have no way in.
+  - [ ] Review and commit the Studio code (separate commit from the docs).
+  - [ ] Add `studio.cloveredge.net` in Vercel (Settings → Domains) and the
+        CNAME it shows in GoDaddy DNS; wait for the HTTPS certificate.
+  - [ ] Push to `main` (auto-deploys), then sign in at
+        `studio.cloveredge.net` and confirm Homepage editing works and
+        `www.cloveredge.net/studio` returns 404.
+  - [ ] Write `AuditLogEntry` rows from the Studio homepage Server Actions
+        (still unlogged — see "Governance").
 - [ ] Studio reference data — the authoritative records everything else
       links to (Edward, 2026-11-22: "manage all the data about the casinos
       and other points of authoritative data"). List / search / add / edit
@@ -364,7 +384,8 @@ collect → watch → record loop runs first).
 - [ ] Studio "Add video" form: paste a YouTube URL → fetch official metadata
       (`videos.list`, 1 quota unit) → create Video + Creator.
 - [ ] Channel watchlist: admin adds creator channels; a scheduled job
-      (Vercel Cron) checks them for new uploads using cheap API calls (per
+      (Vercel Cron — **open**: Vercel now calls Cron Jobs legacy and points
+      new work to Vercel Schedules; pick one when this is built) checks them for new uploads using cheap API calls (per
       the quota rule in "Resources").
 - [ ] Hand-tag the first ~50 videos with Claude Code → the gold set.
 
@@ -372,6 +393,10 @@ collect → watch → record loop runs first).
 - [ ] For each new video: one Claude call over title/description/tags +
       thumbnails → Plays, Wins, venue, date, each with confidence; saved
       with an ExtractionRun.
+- [ ] Validation pass after extraction: deterministic checks (known game /
+      provider / venue or alias, bet and win amounts in sane ranges, dates
+      not in the future, evidence present) that **flag** problems for the
+      review queue rather than silently fixing or dropping facts.
 - [ ] Videos publish immediately (publish-then-review, decided 2026-09-30).
 - [ ] Measure the pipeline against the gold set: accuracy per field (game,
       bet, win amount, venue, date). This number decides what to improve
@@ -402,6 +427,26 @@ collect → watch → record loop runs first).
       around win moments).
 - [ ] Recommendation engine v1 — still blocked on the two open questions
       below.
+
+### Data Factory — how the milestones fit the target pipeline (recorded 2026-11-26)
+
+`CLAUDE.md` describes the video pipeline as six processes that can each be
+run, retried and checked on their own, with saved inputs/outputs, status
+and provenance, and no duplicate records on retry. That's a target shape,
+not something built yet, and it doesn't mean six services — early on it
+can all live in this one app. How it maps onto the milestones:
+
+| Process | What it does | Milestone |
+|---|---|---|
+| 1. Acquisition | Find candidate videos, record where they came from, dedupe | M2 — "Add video" form, channel watchlist |
+| 2. YouTube metadata | Fetch/refresh official metadata within quota | M2 — `videos.list` on add; refresh later |
+| 3. AI video intelligence | Evidence → candidate facts with confidence | M3 — "Watch" pipeline v1 (`ExtractionRun`) |
+| 4. Validation | Rule checks; flag conflicts for review | M3 — validation pass (added 2026-11-26) |
+| 5. Human review & learning | Confirm/correct; keep corrections as examples | M4 — review queue |
+| 6. Publishing & enrichment | Show eligible facts; later updates enrich the same records | M3 (publish immediately) + M5 |
+
+Publish-then-review (2026-09-30) stays in force — the process names don't
+create a new review-before-publish gate.
 
 ### Design system (decided: 2026-11-22)
 
@@ -648,7 +693,14 @@ automatically by Vercel.
   dashboard — Top Story carousel, Trending Now, topic rails, guest and
   signed-in personalization (Phase 2, done).
 - **Videos**: 5 real slot videos, hand-seeded; `/videos` filter page live.
-  No automated collection or AI tagging yet.
+  First-pass graph tags (Plays, Wins, venues, games, makers) written by
+  `prisma/gold/tag-v0.ts`, awaiting Edward's verification. No automated
+  collection or AI tagging yet.
+- **Studio** (2026-11-26): skeleton built locally (routing, layout, sign-in
+  gate, Homepage editor moved in) — not yet committed or deployed;
+  production still serves `/admin/homepage`. See Milestone 2.
+- **Assistant guidance**: `CLAUDE.md`, `AGENTS.md`, `.claude/skills/`
+  committed 2026-11-26 (see "Documentation").
 - `YOUTUBE_API_KEY` in local `.env` only (used by the seed script).
 
 ## Data model summary
@@ -657,7 +709,7 @@ automatically by Vercel.
 |---|---|---|
 | `User` | Account, preferences, `tier`, `isAdmin`/`isContentReviewer` | Built |
 | `PreferenceTopic` | Opt-in topic/region; Trending Now pins | Built |
-| `Casino` | Online/land-based casino — becomes the graph's **Venue** node | Built — needs location fields (Milestone 1) |
+| `Casino` | Online/land-based casino — the graph's **Venue** node | Built — venue/location fields added in Milestone 1; 2 venues from tag-v0 |
 | `Bonus` | Promo offers tied to a casino | Built |
 | `ContentItem` | Editorial content, `tier`-gated, featured carousel | Built |
 | `NewsletterIssue` | Sent-issue snapshot | Built |
@@ -665,10 +717,10 @@ automatically by Vercel.
 | `Account` / `Session` / `VerificationToken` | Auth.js | Built |
 | `HomepageModule` | Configurable homepage rails | Built |
 | `GuestSignal` | Anonymous interest signal (no PII) | Built |
-| `VideoEmbed` | YouTube video — becomes the graph's **Video** node | Built — 5 videos; reshaped in Milestone 1 |
-| `Game` (was `SlotGame`) | Specific game title, provider, type | Built 2026-11-22, empty |
-| `GameProvider` | Game manufacturer | Schema only, empty |
-| `AuditLogEntry` | Who did what, when | Schema only, not wired in |
+| `VideoEmbed` | YouTube video — the graph's **Video** node | Built — 5 videos; reshaped in Milestone 1 |
+| `Game` (was `SlotGame`) | Specific game title, provider, type | Built 2026-11-22; first rows from tag-v0 |
+| `GameProvider` | Game manufacturer | Built; first rows from tag-v0 |
+| `AuditLogEntry` | Who did what, when | Schema only, not wired in (Studio Homepage actions still unlogged) |
 | **Creator, Play, Win, ExtractionRun, Alias** | Knowledge graph v1 | **Built 2026-11-22** (dev + production) — 5 creators backfilled |
 | `CasinoRatingCriteria`, `OddsSnapshot`, `CreatorProfile` | Phase 3/4 | Planned, parked |
 
@@ -940,8 +992,14 @@ explicitly not urgent — see "Monetization" near the top of this document.
 - **Deployment**: Vercel, with the domain at GoDaddy (see "Hosting & deployment")
 
 
-## Immediate next steps
+## Immediate next steps (updated 2026-11-26)
 
-1. **Build the knowledge graph v1** (approved 2026-11-22) — Milestone 1.
-2. Start the gold set: hand-tag the first videos with Claude Code
-   (Milestone 2).
+1. **Ship the Studio skeleton** — review and commit the Studio code, add
+   `studio.cloveredge.net` in Vercel + GoDaddy, push, and check it live
+   (Milestone 2's ship steps).
+2. **Edward verifies the 5 tagged videos** → first gold-set entries
+   (Milestone 1's last open item).
+3. **Studio reference data** — casinos, games, makers, creators, with
+   aliases, merge and audit log (Milestone 2).
+4. **Studio "Add video" form** — needs `YOUTUBE_API_KEY` on Vercel.
+5. Before Milestone 3: add `ANTHROPIC_API_KEY` locally and on Vercel.
