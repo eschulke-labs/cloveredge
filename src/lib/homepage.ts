@@ -155,7 +155,7 @@ export async function getHomepageData(): Promise<HomepageData> {
       video: item.video,
     }));
 
-  // Admin override (/admin/homepage) takes full priority when set — pinned
+  // Admin override (Studio → Homepage) takes full priority when set — pinned
   // topics show in exactly the configured order, no blending with computed
   // data. Falls back to the real click-aggregate below only when nothing's
   // pinned, so "trending" stays authentic unless someone deliberately

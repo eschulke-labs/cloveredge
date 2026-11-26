@@ -26,6 +26,9 @@ const config = {
       session.user.id = user.id;
       session.user.tier = (user as unknown as { tier: "FREE" | "PAID" }).tier;
       session.user.isAdmin = (user as unknown as { isAdmin: boolean }).isAdmin;
+      session.user.isContentReviewer = (
+        user as unknown as { isContentReviewer: boolean }
+      ).isContentReviewer;
       return session;
     },
   },

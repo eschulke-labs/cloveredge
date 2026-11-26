@@ -1,14 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { auth } from "@/lib/auth";
+import { requireStudio } from "@/lib/studio";
 import { prisma } from "@/lib/prisma";
 
 export async function updateModuleOrder(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.isAdmin) {
-    throw new Error("Unauthorized");
-  }
+  await requireStudio("admin");
 
   const updates: { id: string; order: number; active: boolean }[] = [];
   for (const [key, value] of formData.entries()) {
@@ -31,15 +28,12 @@ export async function updateModuleOrder(formData: FormData) {
     ),
   );
 
-  revalidatePath("/admin/homepage");
+  revalidatePath("/studio/homepage");
   revalidatePath("/");
 }
 
 export async function updateTrendingPins(formData: FormData) {
-  const session = await auth();
-  if (!session?.user?.isAdmin) {
-    throw new Error("Unauthorized");
-  }
+  await requireStudio("admin");
 
   const updates: { id: string; pinnedTrendingOrder: number | null }[] = [];
   for (const [key, value] of formData.entries()) {
@@ -62,6 +56,6 @@ export async function updateTrendingPins(formData: FormData) {
     ),
   );
 
-  revalidatePath("/admin/homepage");
+  revalidatePath("/studio/homepage");
   revalidatePath("/");
 }

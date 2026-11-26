@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getHomepageData } from "@/lib/homepage";
@@ -6,6 +7,7 @@ import { SubscribeForm } from "@/components/SubscribeForm";
 import { Carousel } from "@/components/Carousel";
 import { TrendingWidget } from "@/components/TrendingWidget";
 import { Rail } from "@/components/Rail";
+import { studioUrlFrom } from "@/lib/studio-routing";
 
 export default async function Home() {
   const [{ featuredStories, trending, rails, viewerTier }, session, topics] = await Promise.all([
@@ -32,9 +34,9 @@ export default async function Home() {
         </span>
         {session?.user ? (
           <div className="flex items-center gap-3 text-sm">
-            {session.user.isAdmin && (
-              <Link href="/admin/homepage" className="hover:underline">
-                Admin
+            {(session.user.isAdmin || session.user.isContentReviewer) && (
+              <Link href={studioUrlFrom((await headers()).get("host"))} className="hover:underline">
+                Studio
               </Link>
             )}
             <span className="text-gray-500">{session.user.email}</span>
