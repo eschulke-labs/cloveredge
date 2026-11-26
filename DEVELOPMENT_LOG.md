@@ -29,6 +29,8 @@ Entry format: date · branch/commits · what changed · decisions · open items.
 - Wrote `STUDIO_SETUP_STEPS.txt` (not committed): click-by-click steps to
   add `studio.cloveredge.net` in Vercel and GoDaddy.
 - Started this log; updated `CLAUDE.md` to match the decisions below.
+- Added `TODO.md` (Edward's idea): to-dos, decisions waiting on Edward,
+  and undecided ideas, kept up to date as we work.
 
 **Decisions (Edward)**
 1. **Plan vs log**: `DEVELOPMENT_PLAN.md` = mission/vision, updated only

@@ -9,6 +9,7 @@ CloverEdge is a public, newsletter-style casino information and discovery produc
 - `AGENTS.md` supplies repository-wide agent instructions. Preserve and follow it. Its Next.js warning is deliberate: before changing Next.js code, read the relevant guide bundled in `node_modules/next/dist/docs/` and follow current-version guidance.
 - `DEVELOPMENT_PLAN.md` is the guiding mission and vision: product decisions, rationale, roadmap, and open questions. Read the relevant sections before architecture or product changes. Update it only when the mission, vision, or a product decision changes (Edward, 2026-11-26). It may contain intentional in-progress edits; preserve them.
 - `DEVELOPMENT_LOG.md` is the running record of work and conversations, newest first. Read the latest entries to learn current status. Add or extend today's entry at the end of every working session (work done, decisions with who/why, open items) without being asked.
+- `TODO.md` tracks to-dos, decisions waiting on Edward, and undecided ideas. Add ideas and follow-ups to it as they come up during work; when something is done, tick it and record it in the log.
 - `prisma/schema.prisma` is the source of truth for the current data model. Read it before changing graph, extraction, video, or persistence code.
 - `package.json` defines the actual framework and available libraries. Do not rely on older README/version references when they disagree with the installed project.
 
