@@ -87,9 +87,10 @@ implications going forward:
   short `CONTRIBUTING.md` — setup steps (already in README) plus the
   review/branching workflow — so a new developer's first question isn't
   "how do I even start."
-- `DEVELOPMENT_PLAN.md` stays the single source of truth for *why*; it
-  doesn't get allowed to drift out of sync with what's actually built, the
-  same discipline "Current state" (below) already follows.
+- `DEVELOPMENT_PLAN.md` stays the single source of truth for *why* — the
+  mission, vision, and product decisions. **Day-to-day work, status, and
+  conversations go in `DEVELOPMENT_LOG.md`** (Edward, 2026-11-26), so the
+  plan changes only when the direction does.
 - **AI-assistant guidance is checked in (2026-11-26, commit `c4e7a31`).**
   `CLAUDE.md` (product baseline, Data Factory target architecture, safety
   rules — e.g. never read secrets, never migrate/deploy/seed without an
@@ -481,7 +482,9 @@ default grays.
 - Reviewers get their own role (`User.isContentReviewer`), separate from
   full admin.
 - Publish-then-review: AI-tagged videos go live immediately; the review
-  queue catches mistakes.
+  queue catches mistakes. **Reconfirmed by Edward 2026-11-26**: staff fix
+  mistakes or add missing facts after publishing, and those corrections
+  train the AI.
 - Denomination stored as a bucket plus exact amount when known.
 - "Content provider" means both the creator (who posted) and the game
   provider (manufacturer) — both are nodes above.

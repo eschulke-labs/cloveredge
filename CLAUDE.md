@@ -7,7 +7,8 @@ CloverEdge is a public, newsletter-style casino information and discovery produc
 ## Read these sources first
 
 - `AGENTS.md` supplies repository-wide agent instructions. Preserve and follow it. Its Next.js warning is deliberate: before changing Next.js code, read the relevant guide bundled in `node_modules/next/dist/docs/` and follow current-version guidance.
-- `DEVELOPMENT_PLAN.md` is the source of truth for product decisions, rationale, current implementation, roadmap, and open questions. Read the relevant sections before architecture or product changes. It may contain intentional in-progress edits; preserve them.
+- `DEVELOPMENT_PLAN.md` is the guiding mission and vision: product decisions, rationale, roadmap, and open questions. Read the relevant sections before architecture or product changes. Update it only when the mission, vision, or a product decision changes (Edward, 2026-11-26). It may contain intentional in-progress edits; preserve them.
+- `DEVELOPMENT_LOG.md` is the running record of work and conversations, newest first. Read the latest entries to learn current status. Add or extend today's entry at the end of every working session (work done, decisions with who/why, open items) without being asked.
 - `prisma/schema.prisma` is the source of truth for the current data model. Read it before changing graph, extraction, video, or persistence code.
 - `package.json` defines the actual framework and available libraries. Do not rely on older README/version references when they disagree with the installed project.
 
@@ -30,7 +31,7 @@ The Data Factory is a target made of six independently runnable processes with e
 5. **Human review and learning** lets authorized reviewers confirm, correct, reject, or annotate candidate facts. Record attributable corrections as training/evaluation examples; curate examples before reuse. Staff notes and review metadata are internal.
 6. **Publishing with continuous enrichment** exposes eligible content and graph facts to the public experience, then allows later metadata, evidence, and corrected facts to enrich the same canonical entities without duplication. Track material changes and preserve provenance.
 
-Treat this as six separate process responsibilities even when an early version runs in one repository or scheduled job. Use durable states and idempotent boundaries so a failure in one stage does not corrupt completed work in another. Keep human review and public publishing policy aligned with the latest explicit decision in `DEVELOPMENT_PLAN.md`; that document has an earlier publish-then-review decision, so do not silently replace it or infer a new universal publication gate from the process names alone.
+Treat this as six separate process responsibilities even when an early version runs in one repository or scheduled job. Use durable states and idempotent boundaries so a failure in one stage does not corrupt completed work in another. Publishing policy is publish-then-review (decided 2026-09-30, reconfirmed by Edward 2026-11-26): videos go live immediately; staff then fix mistakes or fill missing facts, and those corrections train the AI. Validation and low confidence route items to the review queue; they do not hold them back from publishing. Do not add a review-before-publish gate unless Edward changes this decision in `DEVELOPMENT_PLAN.md`.
 
 Use only permitted source access. YouTube's official metadata and embedded player are acceptable project paths; do not scrape unauthorized transcripts or bypass access controls. Any future frame sampling, model provider, schedule, cost, or review-gating choice must follow the current plan or be surfaced as an open decision, not invented as settled architecture.
 
@@ -38,7 +39,8 @@ Use only permitted source access. YouTube's official metadata and embedded playe
 
 - Make the smallest coherent, reviewable change. Preserve user changes and unrelated work, especially modified `DEVELOPMENT_PLAN.md` and in-progress Studio/graph work. Never reset, overwrite, or “clean up” unrequested changes.
 - Keep secrets safe: do not read, print, alter, commit, or expose `.env*` files, tokens, credentials, or production data. Ask for an approved secret-handling path if a task truly needs credentials.
-- Do not run database migrations or deploy/publish changes unless the user explicitly asks. For the current skills task, do neither. Do not seed or mutate a live database.
+- Do not run database migrations or deploy/publish changes unless the user explicitly asks. Do not seed or mutate a live database.
 - Respect separate public, reviewer, and admin access. Enforce authorization on the server, not only in the interface; keep auditability for consequential review/admin actions.
-- When changing architecture, explain the reason in the code and update `DEVELOPMENT_PLAN.md` only when requested or when the task explicitly calls for it. Keep implementation claims grounded in inspected code.
+- When changing architecture, explain the reason in the code. Record the work in `DEVELOPMENT_LOG.md`; change `DEVELOPMENT_PLAN.md` only for mission/vision or product-decision changes. Keep implementation claims grounded in inspected code.
+- Git workflow (Edward, 2026-11-26): each piece of work goes on its own branch, then a GitHub pull request, then Edward approves, then merge to `main`. Never commit directly to `main`; pushing/merging `main` deploys production. Push only with Edward's OK.
 - Do not install dependencies or add infrastructure just to anticipate future needs. Prefer the existing Prisma/Postgres design unless evidence and the plan justify a change.
