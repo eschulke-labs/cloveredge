@@ -336,8 +336,20 @@ collect → watch → record loop runs first).
       needs it.
 
 **Milestone 2 — Collect videos**
-- [ ] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
+- [x] Studio skeleton: `studio.` subdomain routing in `src/proxy.ts`,
       Studio layout, reviewer/admin sign-in gate; move `/admin/homepage` in.
+      Built 2026-11-26 (`src/app/studio/`, `src/lib/studio.ts`,
+      `src/lib/studio-routing.ts`). How it routes: on `studio.*` hosts the
+      proxy rewrites `/x` → `/studio/x` (URLs stay clean; `/api/*` and
+      files in `public/` pass through); on the public production hosts
+      `/studio/*` returns 404; on localhost, Codespaces and Vercel previews
+      the Studio is at `/studio`. Every Studio page and Server Action calls
+      `requireStudio("graph" | "admin")` itself — the layout's sign-in gate
+      only decides what's drawn. Sign-in is per host (the session cookie
+      isn't shared with `www`), so staff sign in to the Studio separately.
+      `/admin/homepage` now redirects to Studio → Homepage. **Needs
+      `studio.cloveredge.net` added in Vercel + GoDaddy before this code
+      ships**, otherwise production admins have no way in.
 - [ ] Studio reference data — the authoritative records everything else
       links to (Edward, 2026-11-22: "manage all the data about the casinos
       and other points of authoritative data"). List / search / add / edit
