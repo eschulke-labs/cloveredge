@@ -6,6 +6,7 @@ declare module "next-auth" {
       id: string;
       tier: "FREE" | "PAID";
       isAdmin: boolean;
+      isContentReviewer: boolean;
     } & DefaultSession["user"];
   }
 }
