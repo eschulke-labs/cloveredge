@@ -14,6 +14,20 @@ Entry format: date · branch/commits · what changed · decisions · open items.
 
 ---
 
+## 2026-11-27 — Studio status check, strategy PR
+
+**Work**
+- Checked Studio status: PR #2 still a draft; `studio.cloveredge.net`
+  doesn't resolve yet (Vercel + GoDaddy steps not done or not saved).
+- Pushed `docs-strategy` (Edward's OK) and opened **PR #3**: strategy doc
+  + plan rewrite + log/TODO updates. Docs only.
+
+**Open**
+- Edward: review and merge PR #3.
+- Edward: Vercel + GoDaddy steps; then Claude merges PR #2 with Edward's OK.
+
+---
+
 ## 2026-11-26 — Assistant guidance, plan refresh, Studio branch, this log
 
 **Work**
@@ -32,6 +46,17 @@ Entry format: date · branch/commits · what changed · decisions · open items.
 - Added `TODO.md` (Edward's idea): to-dos, decisions waiting on Edward,
   and undecided ideas, kept up to date as we work.
 
+- Edward added **`CloverEdge Development Strategy.docx`** (Data Factory
+  Architecture & Knowledge Acquisition Strategy v1.0, written with
+  ChatGPT, status "Proposed"). Moved to `docs/strategy/` with a Markdown
+  copy, `docs/strategy/data-factory-strategy.md`, so GitHub and assistants
+  can read it. Reviewed against the plan and schema — it fits the
+  existing design and adds richer metadata (betting behaviour, playing
+  style, content/session type, game features), staged publishing
+  (Publishable → Enriched → Complete), job-tracking records, a
+  Studio operations dashboard, and historical backfill. Waiting on Edward
+  to say whether it's adopted (then it goes into the plan).
+
 **Decisions (Edward)**
 1. **Plan vs log**: `DEVELOPMENT_PLAN.md` = mission/vision, updated only
    when those change; `DEVELOPMENT_LOG.md` = all work and conversations,
@@ -45,6 +70,20 @@ Entry format: date · branch/commits · what changed · decisions · open items.
 4. **Git workflow**: each piece of work on its own branch → pull request
    on GitHub → Edward approves → merge to `main` (which deploys live).
    Nothing goes straight to `main`.
+
+5. **Data Factory strategy adopted** as CloverEdge's direction; written
+   into `DEVELOPMENT_PLAN.md`. Milestones re-ordered to follow it: 2
+   Collect videos · 3 Metadata foundation + gold set · 4 Watch pipeline +
+   publishing · 5 Review queue + learning · 6 Public discovery + redesign
+   · 7 Expand and deepen.
+6. **Publishing minimum**: the strategy's "Publishable" stage is the
+   automatic bar for going live (no human check); details of "confirmed
+   gambling relevance" to be worked out in Milestone 3.
+7. **Gold set first**: the ~50 hand-checked videos come before the AI
+   pipeline so its first run can be scored.
+
+PR #1 (docs) merged by Edward. The strategy doc and plan rewrite missed it
+and went into a follow-up docs PR.
 
 **Why the Studio isn't merged yet**: merging makes `/admin/homepage`
 redirect to `studio.cloveredge.net`, which doesn't exist until Edward

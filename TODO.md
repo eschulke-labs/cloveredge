@@ -19,7 +19,8 @@ Owner tags: **[Edward]** needs you · **[Claude]** assistant can do it ·
 
 - [x] **[Edward]** OK to push the branches — pushed 2026-11-26; PRs #1
       (docs) and #2 (Studio, draft).
-- [ ] **[Edward]** Review and approve PR #1 (docs) on GitHub.
+- [x] **[Edward]** Review and merge PR #1 (docs) — merged 2026-11-26.
+- [ ] **[Edward]** Review and merge PR #3 (strategy/plan, follow-up to #1).
 - [ ] **[Edward]** Add `studio.cloveredge.net` in Vercel + GoDaddy
       (steps in `STUDIO_SETUP_STEPS.txt`).
 - [ ] **[Claude]** After the domain shows "Valid Configuration": merge the
@@ -34,26 +35,40 @@ Owner tags: **[Edward]** needs you · **[Claude]** assistant can do it ·
 - [ ] **[Claude]** Studio Homepage actions write `AuditLogEntry` rows.
 - [ ] **[Claude]** Studio reference data: casinos, games, makers, creators
       (list/search/add/edit, aliases, merge) — Milestone 2.
+- [ ] **[Edward]** Pick the starting list of creators/channels to collect
+      from — Milestone 2.
 - [ ] **[Claude]** Studio "Add video" form — **[Edward]** add
       `YOUTUBE_API_KEY` on Vercel first.
 - [ ] **[Edward]** Add `ANTHROPIC_API_KEY` locally and on Vercel before
-      Milestone 3.
+      Milestone 4.
 
 ## Decisions waiting on Edward
 
-- [ ] What makes a video **eligible to go live**? Suggested automatic
-      checks: it's really casino gameplay, YouTube allows embedding, it's
-      not deleted/private. Failing videos wait in the Studio.
+- [x] What makes a video eligible to go live — decided 2026-11-26: the
+      strategy's "Publishable" minimum (see the plan's "Publishing").
+- [ ] How exactly "confirmed gambling relevance" is decided, and whether
+      YouTube embedding allowed / not deleted are added to the minimum
+      (Milestone 3).
 - [ ] Should unverified AI facts show a label on the public site
       ("AI-tagged, not yet verified") until staff confirm them?
 - [ ] AI training from corrections: hand-picked examples (current
       guidance) or something more automatic?
 - [ ] Channel watchlist scheduler: Vercel Cron (legacy) or Vercel
       Schedules.
+- [x] Adopt the Data Factory strategy — yes (2026-11-26); folded into the
+      plan, milestones re-ordered.
 - [ ] Carried over: recommendations tied to a named casino or
       casino-agnostic? "How to play": strategy, rules, or both?
 
 ## Ideas (not decided)
+
+- From the strategy doc: new fields for betting behaviour, playing style,
+  content/session type, game features; venue types like cruise ship;
+  derived stats (biggest win, net result) computed, not stored.
+- From the strategy doc: Studio operations dashboard (pipeline counts,
+  AI accuracy per field, API quota, AI cost per video).
+- From the strategy doc: historical backfill of creators' older uploads
+  and targeted game searches, alongside daily discovery.
 
 - Add `CONTRIBUTING.md` before inviting other developers (from the plan's
   documentation principle).
