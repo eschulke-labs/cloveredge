@@ -14,6 +14,20 @@ Entry format: date · branch/commits · what changed · decisions · open items.
 
 ---
 
+## 2026-11-27 — Studio status check, strategy PR
+
+**Work**
+- Checked Studio status: PR #2 still a draft; `studio.cloveredge.net`
+  doesn't resolve yet (Vercel + GoDaddy steps not done or not saved).
+- Pushed `docs-strategy` (Edward's OK) and opened **PR #3**: strategy doc
+  + plan rewrite + log/TODO updates. Docs only.
+
+**Open**
+- Edward: review and merge PR #3.
+- Edward: Vercel + GoDaddy steps; then Claude merges PR #2 with Edward's OK.
+
+---
+
 ## 2026-11-26 — Assistant guidance, plan refresh, Studio branch, this log
 
 **Work**

@@ -20,7 +20,7 @@ Owner tags: **[Edward]** needs you · **[Claude]** assistant can do it ·
 - [x] **[Edward]** OK to push the branches — pushed 2026-11-26; PRs #1
       (docs) and #2 (Studio, draft).
 - [x] **[Edward]** Review and merge PR #1 (docs) — merged 2026-11-26.
-- [ ] **[Edward]** Review and merge the strategy/plan PR (follow-up to #1).
+- [ ] **[Edward]** Review and merge PR #3 (strategy/plan, follow-up to #1).
 - [ ] **[Edward]** Add `studio.cloveredge.net` in Vercel + GoDaddy
       (steps in `STUDIO_SETUP_STEPS.txt`).
 - [ ] **[Claude]** After the domain shows "Valid Configuration": merge the
